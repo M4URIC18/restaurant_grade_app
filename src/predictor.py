@@ -15,10 +15,19 @@ MODEL_PATH = os.path.join(BASE_DIR, "models", "restaurant_grade_model.pkl")
 
 META_PATH = os.path.join(BASE_DIR, "models", "model_metadata.json")
 
+
+print("Loading model from:", MODEL_PATH)
 try:
     model = joblib.load(MODEL_PATH)
+    print("Model loaded successfully!")
 except Exception as e:
+    print("MODEL LOAD ERROR:", e)
     raise RuntimeError(f"❌ Could not load model: {e}")
+
+# try:
+#     model = joblib.load(MODEL_PATH)
+# except Exception as e:
+#     raise RuntimeError(f"❌ Could not load model: {e}")
 
 try:
     with open(META_PATH, "r") as f:
