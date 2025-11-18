@@ -74,20 +74,18 @@ def load_nfh_data():
 @st.cache_data
 def load_merged_data():
     """
-    Merges restaurants with NFH demographic data.
-    Matching is done by borough + neighborhood primarily.
-    Fallback logic fills missing demographic values using borough-level means.
+    Merges restaurant data (df_merged_big.csv) with NFH demographics (df_demo_clean.csv)
+    using borough + neighborhood, and safely fills missing demo values.
     """
 
     df_rest = load_restaurant_data()
     df_nfh = load_nfh_data()
 
-    # Clean restaurant neighborhood field if present
-    # Restaurant dataset neighborhood column (if present)
-    possible_rest_neigh_cols = ["neighborhood", "neighborhoods", "neighborhood_simple"]
-
+    # ----------------------------
+    # Normalize RESTAURANT neighborhood
+    # ----------------------------
     rest_neigh_col = None
-    for col in possible_rest_neigh_cols:
+    for col in ["neighborhood", "neighborhoods", "neighborhood_simple"]:
         if col in df_rest.columns:
             rest_neigh_col = col
             break
@@ -101,46 +99,45 @@ def load_merged_data():
             .str.strip()
         )
     else:
-        # Fallback: manually create missing neighborhood so merge still works
+        # If no neighborhood column exists, still create it so merge doesn't break
         df_rest["neighborhood"] = None
 
-
-    # First merge by borough + neighborhood
+    # ----------------------------
+    # Merge with NFH data on borough + neighborhood
+    # ----------------------------
     df_merged = pd.merge(
         df_rest,
         df_nfh,
         on=["borough", "neighborhood"],
-        how="left"
+        how="left",
+        suffixes=("", "_nfh")
     )
 
-    # Fallback if demographic values missing
-    missing = df_merged['median_income'].isna().sum()
-    if missing > 0:
-        print(f"⚠️ {missing} rows missing NFH match, applying borough-level fallback...")
+    # ----------------------------
+    # Ensure required demographic columns exist
+    # ----------------------------
+    required_demo_cols = [
+        "nyc_poverty_rate",
+        "median_income",
+        "perc_white",
+        "perc_black",
+        "perc_asian",
+        "perc_hispanic",
+        "indexscore",
+    ]
 
-        # Borough-level mean demographic stats
-        borough_stats = (
-            df_nfh.groupby("borough")
-            .mean(numeric_only=True)
-            .reset_index()
+    for col in required_demo_cols:
+        if col not in df_merged.columns:
+            # If the column is missing entirely, create it as NaN so code doesn't crash
+            df_merged[col] = pd.NA
+
+        # Fill missing demographic values using borough-level averages
+        df_merged[col] = df_merged.groupby("borough")[col].transform(
+            lambda x: x.fillna(x.mean())
         )
-
-        df_merged = pd.merge(
-            df_merged,
-            borough_stats,
-            on="borough",
-            suffixes=("", "_boroughfallback"),
-            how="left"
-        )
-
-        # Fill missing values
-        for col in [
-            'median_income', 'indexscore', 'nyc_poverty_rate',
-            'perc_white', 'perc_black', 'perc_asian', 'perc_hispanic'
-        ]:
-            df_merged[col] = df_merged[col].fillna(df_merged[col + "_boroughfallback"])
 
     return df_merged
+
 
 
 # -------------------------------------------------
