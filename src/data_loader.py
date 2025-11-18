@@ -41,23 +41,30 @@ def load_restaurant_data():
 @st.cache_data
 def load_nfh_data():
     """
-    Loads the demographic NFH dataset.
-    Must include: median_income, indexscore, poverty rate, percent race.
+    Loads the NFH demographic dataset.
+    Standardizes borough & neighborhood columns.
+    Uses 'neighborhood_simple' as the normalized neighborhood field.
     """
+
     df = pd.read_csv(NFH_DATA_PATH)
 
-    # Standardize neighborhood names
-    df['neighborhood'] = (
-        df['neighborhood']
-        .astype(str)
-        .str.lower()
-        .str.replace(r'[^a-z\s]', '', regex=True)
-        .str.strip()
-    )
+    # Standardize borough
+    df["borough"] = df["borough"].astype(str).str.title().str.strip()
 
-    df['borough'] = df['borough'].astype(str).str.title()
+    # Use the cleaned neighborhood column: 'neighborhood_simple'
+    if "neighborhood_simple" in df.columns:
+        df["neighborhood"] = (
+            df["neighborhood_simple"]
+            .astype(str)
+            .str.lower()
+            .str.replace(r"[^a-z\s]", "", regex=True)
+            .str.strip()
+        )
+    else:
+        raise KeyError("❌ 'neighborhood_simple' column not found in NFH dataset.")
 
     return df
+
 
 
 # -------------------------------------------------
@@ -76,16 +83,27 @@ def load_merged_data():
     df_nfh = load_nfh_data()
 
     # Clean restaurant neighborhood field if present
-    if "neighborhood" in df_rest.columns:
-        df_rest['neighborhood'] = (
-            df_rest['neighborhood']
+    # Restaurant dataset neighborhood column (if present)
+    possible_rest_neigh_cols = ["neighborhood", "neighborhoods", "neighborhood_simple"]
+
+    rest_neigh_col = None
+    for col in possible_rest_neigh_cols:
+        if col in df_rest.columns:
+            rest_neigh_col = col
+            break
+
+    if rest_neigh_col:
+        df_rest["neighborhood"] = (
+            df_rest[rest_neigh_col]
             .astype(str)
             .str.lower()
-            .str.replace(r'[^a-z\s]', '', regex=True)
+            .str.replace(r"[^a-z\s]", "", regex=True)
             .str.strip()
         )
     else:
-        df_rest['neighborhood'] = None
+        # Fallback: manually create missing neighborhood so merge still works
+        df_rest["neighborhood"] = None
+
 
     # First merge by borough + neighborhood
     df_merged = pd.merge(
