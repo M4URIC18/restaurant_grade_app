@@ -104,7 +104,7 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 left_col, right_col = st.columns([2, 1])
 
 with left_col:
-    st.subheader("🗺️ Map of Restaurants")
+    st.subheader(" Map of Restaurants")
 
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
@@ -153,7 +153,7 @@ with left_col:
 
 
 with right_col:
-    st.subheader("🔍 Inspect & Predict")
+    st.subheader(" Inspect & Predict")
 
     if len(df_filtered) == 0:
         st.info("Use the filters to select at least one restaurant.")
