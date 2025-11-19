@@ -24,7 +24,7 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title("CleanKitchen NYC 🍽️")
+st.title("CleanKitchen NYC")
 st.markdown(
     "Explore NYC restaurant inspections, neighborhood demographics, "
     "and **AI-powered grade predictions** based on real inspection data."
@@ -134,7 +134,7 @@ with left_col:
 
         st_data = st_folium(m, width="100%", height=500)
 
-    st.subheader("📋 Restaurant List")
+    st.subheader("Restaurant List")
     st.caption("Filtered view based on your selections in the sidebar.")
 
     # Show a simpler table
@@ -182,21 +182,21 @@ with right_col:
 
         selected_row = df_filtered.loc[selected_idx]
 
-        st.markdown("### 🍽️ Selected Restaurant")
+        st.markdown("###  Selected Restaurant")
         st.markdown(f"**Name:** {selected_row.get(name_col, 'N/A')}")
         st.markdown(f"**Borough:** {selected_row.get('borough', 'N/A')}")
         st.markdown(f"**ZIP:** {selected_row.get('zipcode', 'N/A')}")
         st.markdown(f"**Cuisine:** {selected_row.get('cuisine_description', 'N/A')}")
 
         # Show existing inspection info (if present)
-        st.markdown("### 🧾 Latest Inspection Info")
+        st.markdown("###  Latest Inspection Info")
         st.markdown(f"- **Score:** {selected_row.get('score', 'N/A')}")
         st.markdown(f"- **Official Grade:** {selected_row.get('grade', 'N/A')}")
         if "inspection_date" in selected_row:
             st.markdown(f"- **Inspection Date:** {selected_row.get('inspection_date')}")
 
         st.markdown("---")
-        st.markdown("### 🤖 Model Prediction")
+        st.markdown("###  Model Prediction")
 
         if st.button("Predict Inspection Grade"):
             try:
@@ -225,7 +225,7 @@ with right_col:
                 st.error(f"Error making prediction: {e}")
 
         st.markdown("---")
-        st.markdown("### 🏙️ Neighborhood Snapshot (from NFH data)")
+        st.markdown("###  Neighborhood Snapshot (from NFH data)")
         nf_cols = [
             "nyc_poverty_rate",
             "median_income",
