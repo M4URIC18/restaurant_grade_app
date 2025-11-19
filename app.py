@@ -2,6 +2,16 @@ import streamlit as st
 import pandas as pd
 import folium
 
+# Load external CSS
+def load_css():
+    try:
+        with open("src/style.css") as f:
+            st.markdown(f"<style>{f.read()}</style>", unsafe_allow_html=True)
+    except Exception as e:
+        st.error(f"Could not load CSS file: {e}")
+
+load_css()
+
 from streamlit_folium import st_folium
 
 from src.data_loader import get_data
