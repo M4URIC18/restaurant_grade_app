@@ -19,12 +19,12 @@ from src.utils import (
 # Page config
 # -------------------------------------------------
 st.set_page_config(
-    page_title="NYC FoodLens",
+    page_title="CleanKitchen NYC",
     page_icon="🍽️",
     layout="wide"
 )
 
-st.title("NYC FoodLens 🍽️")
+st.title("CleanKitchen NYC 🍽️")
 st.markdown(
     "Explore NYC restaurant inspections, neighborhood demographics, "
     "and **AI-powered grade predictions** based on real inspection data."
