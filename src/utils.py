@@ -118,3 +118,117 @@ def restaurant_popup_html(row):
     """
     return html
 
+
+
+    # -------------------------------------------------
+# 6. Build full feature vector for ANY restaurant
+# -------------------------------------------------
+from .data_loader import load_demo_data
+
+# Load demographic lookup table once
+_df_demo = load_demo_data()
+
+DEMO_COLS = [
+    "nyc_poverty_rate",
+    "median_income",
+    "perc_white",
+    "perc_black",
+    "perc_asian",
+    "perc_hispanic",
+    "indexscore",
+]
+
+
+def _demo_lookup(zipcode, borough):
+    """
+    Returns demographic features using:
+    1) ZIP match
+    2) borough average
+    3) global average
+    """
+
+    df = _df_demo.copy()
+
+    # ZIP search
+    try:
+        zipcode = int(zipcode)
+    except:
+        zipcode = None
+
+    if zipcode is not None:
+        df_zip = df[df["zipcode"] == zipcode]
+        if not df_zip.empty:
+            return df_zip[DEMO_COLS].iloc[0].to_dict()
+
+    # Borough fallback
+    if borough:
+        df_b = df[df["borough"].str.lower() == str(borough).lower()]
+        if not df_b.empty:
+            return df_b[DEMO_COLS].mean().to_dict()
+
+    # Global fallback
+    return df[DEMO_COLS].mean().to_dict()
+
+
+def build_feature_vector_from_raw(raw):
+    """
+    Convert raw restaurant info into the exact 12 features
+    required by the model, even when data is missing.
+    """
+
+    # 1. Borough
+    borough = raw.get("borough")
+    if borough:
+        borough = str(borough).title()
+    else:
+        borough = None
+
+    # 2. ZIP code
+    zipcode = raw.get("zipcode")
+    try:
+        zipcode = int(zipcode)
+    except:
+        zipcode = None
+
+    # 3. Cuisine
+    cuisine = raw.get("cuisine_description") or "other"
+    cuisine = str(cuisine).strip().lower()
+
+    # 4. Score (default if missing)
+    score = raw.get("score")
+    if score is None:
+        score = 12.0  # typical A-level restaurant score
+
+    # 5. Critical flag (default)
+    crit = raw.get("critical_flag_bin")
+    if crit is None:
+        crit = 0
+
+    # 6. Demographics (ZIP → borough → global)
+    demo = _demo_lookup(zipcode, borough)
+
+    # 7. Build final dict
+    features = {
+        "borough": borough or "Unknown",
+        "zipcode": zipcode or 0,
+        "cuisine_description": cuisine,
+        "critical_flag_bin": crit,
+        "score": float(score),
+    }
+
+    features.update(demo)
+
+    return features
+
+if __name__ == "__main__":
+    raw_test = {
+        "borough": "Brooklyn",
+        "zipcode": 11234,
+        "cuisine_description": "caribbean",
+        "score": None,
+        "critical_flag_bin": None,
+    }
+
+    print(build_feature_vector_from_raw(raw_test))
+
+

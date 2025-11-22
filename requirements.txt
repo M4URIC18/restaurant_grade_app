@@ -16,3 +16,4 @@ joblib
 
 folium
 streamlit-folium
+requests

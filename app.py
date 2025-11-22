@@ -1,6 +1,7 @@
 import streamlit as st
 import pandas as pd
 import folium
+import os
 
 from streamlit_folium import st_folium
 
@@ -13,6 +14,20 @@ from src.utils import (
     restaurant_popup_html,
     normalize_text,
 )
+
+# -------------------------------------------------
+# Google API key (from Streamlit secrets)
+# -------------------------------------------------
+GOOGLE_API_KEY = st.secrets.get("GOOGLE_MAPS_API_KEY")
+
+if not GOOGLE_API_KEY:
+    st.warning(
+        "⚠️ Google Maps API key not found. "
+        "Add GOOGLE_MAPS_API_KEY to your .streamlit/secrets.toml and Streamlit Cloud secrets."
+    )
+else:
+    # Make it available to other modules via environment variable
+    os.environ["GOOGLE_MAPS_API_KEY"] = GOOGLE_API_KEY
 
 
 # -------------------------------------------------
