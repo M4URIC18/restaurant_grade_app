@@ -96,3 +96,44 @@ def predict_restaurant_grade(restaurant_data: dict):
         "probabilities": prob_dict,
         "raw_output": probs.tolist()
     }
+
+
+
+# -------------------------------------------------------
+# Universal prediction using the raw restaurant dict
+# -------------------------------------------------------
+from .utils import build_feature_vector_from_raw
+
+
+def predict_from_raw_restaurant(raw_restaurant: dict):
+    """
+    Takes a raw restaurant dict (from Google Places or CSV)
+    and returns:
+        - predicted grade
+        - probabilities
+        - the final model feature vector used
+    """
+
+    # 1. Build the 12 feature fields using the universal builder
+    features = build_feature_vector_from_raw(raw_restaurant)
+
+    # 2. Build an input row in the exact feature column order
+    X = pd.DataFrame([[features[col] for col in FEATURE_COLUMNS]],
+                     columns=FEATURE_COLUMNS)
+
+    # 3. Predict
+    pred = model.predict(X)[0]
+
+    # 4. Probabilities (if supported)
+    if hasattr(model, "predict_proba"):
+        probs = model.predict_proba(X)[0]
+        prob_dict = {label: float(p) for label, p in zip(model.classes_, probs)}
+    else:
+        prob_dict = {}
+
+    return {
+        "grade": pred,
+        "probabilities": prob_dict,
+        "features_used": features
+    }
+

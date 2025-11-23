@@ -113,6 +113,113 @@ if cuisine_choice:
 st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
+
+
+
+# -------------------------------------------------
+# Google Search for ANY restaurant
+# -------------------------------------------------
+st.subheader(" Search Any Restaurant (Google Places)")
+
+google_query = st.text_input(
+    "Search restaurant by name:",
+    placeholder="e.g. Shake Shack, Katz Deli, Chipotle…"
+)
+
+google_result = None
+
+if google_query:
+    import requests
+
+    API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
+
+    # 1. Autocomplete search
+    search_url = (
+        "https://maps.googleapis.com/maps/api/place/textsearch/json"
+        f"?query={google_query}&key={API_KEY}"
+    )
+
+    response = requests.get(search_url).json()
+    candidates = response.get("results", [])
+
+    if len(candidates) == 0:
+        st.warning("No matching restaurants found.")
+    else:
+        names = [c["name"] for c in candidates]
+        choice = st.selectbox("Select restaurant:", names)
+
+        google_result = next(c for c in candidates if c["name"] == choice)
+
+        # 2. Extract basic fields
+        lat = google_result["geometry"]["location"]["lat"]
+        lng = google_result["geometry"]["location"]["lng"]
+        place_name = google_result["name"]
+        address = google_result.get("formatted_address", "")
+
+        # 3. Reverse geocode ZIP from lat/lon
+        geo_url = (
+            "https://maps.googleapis.com/maps/api/geocode/json"
+            f"?latlng={lat},{lng}&key={API_KEY}"
+        )
+        geo_data = requests.get(geo_url).json()
+
+        zipcode = None
+        borough = None
+
+        if "results" in geo_data and len(geo_data["results"]) > 0:
+            for comp in geo_data["results"][0]["address_components"]:
+                if "postal_code" in comp["types"]:
+                    zipcode = comp["long_name"]
+                if "sublocality" in comp["types"] or "political" in comp["types"]:
+                    maybe = comp["long_name"]
+                    if maybe.lower() in ["manhattan", "bronx", "brooklyn", "queens", "staten island"]:
+                        borough = maybe.title()
+
+        # Cuisine = unknown (user can select later)
+        cuisine_guess = "other"
+
+        # Build raw restaurant dict
+        raw_restaurant = {
+            "borough": borough,
+            "zipcode": zipcode,
+            "cuisine_description": cuisine_guess,
+            "score": None,
+            "critical_flag_bin": None,
+        }
+
+        from src.predictor import predict_from_raw_restaurant
+
+        pred = predict_from_raw_restaurant(raw_restaurant)
+        predicted_grade = pred["grade"]
+        probs = pred["probabilities"]
+        features = pred["features_used"]
+
+        st.markdown("### ⭐ Google Search Prediction")
+        st.markdown(f"**Name:** {place_name}")
+        st.markdown(f"**Address:** {address}")
+        st.markdown(f"**ZIP:** {zipcode}")
+        st.markdown(f"**Borough:** {borough}")
+
+        color = get_grade_color(predicted_grade)
+
+        st.markdown(
+            f"**Predicted Grade:** <span style='color:{color}; font-size: 26px; font-weight:bold'>{predicted_grade}</span>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("#### Confidence")
+        for g, p in probs.items():
+            st.write(f"{g}: {p*100:.1f}%")
+
+        st.markdown("---")
+
+
+
+
+
+
+
+
 # -------------------------------------------------
 # MAIN LAYOUT: Map (left) + Details/Prediction (right)
 # -------------------------------------------------
@@ -130,7 +237,9 @@ with left_col:
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
-        # Add markers
+        # -------------------------------------------------
+        # Add markers from your dataset (existing code)
+        # -------------------------------------------------
         for _, row in df_filtered.iterrows():
             lat = row["latitude"]
             lon = row["longitude"]
@@ -147,8 +256,40 @@ with left_col:
                 fill_opacity=0.8
             ).add_to(m)
 
+        # -------------------------------------------------
+        # ✅ ADD GOOGLE RESTAURANT MARKER HERE
+        # (only if google_result exists)
+        # -------------------------------------------------
+        if "google_result" in locals() and google_result:
+
+            g_lat = google_result["geometry"]["location"]["lat"]
+            g_lon = google_result["geometry"]["location"]["lng"]
+            g_name = google_result["name"]
+            g_address = google_result.get("formatted_address", "")
+
+            popup_html = f"""
+            <div style="font-size:14px;">
+                <b>{g_name}</b><br>
+                <span>{g_address}</span><br>
+                <span style='color:blue;'>Google Search Result</span>
+            </div>
+            """
+
+            # Blue Google marker
+            folium.Marker(
+                location=[g_lat, g_lon],
+                popup=folium.Popup(popup_html, max_width=300),
+                icon=folium.Icon(color="blue", icon="info-sign")
+            ).add_to(m)
+
+            # Recenter map around Google restaurant
+            m.location = [g_lat, g_lon]
+            m.zoom_start = 15
+
+        # Render Folium map
         st_data = st_folium(m, width="100%", height=500)
 
+    # Restaurant table remains unchanged
     st.subheader("Restaurant List")
     st.caption("Filtered view based on your selections in the sidebar.")
 
