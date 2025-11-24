@@ -146,3 +146,20 @@ def load_merged_data():
 
 def get_data():
     return load_merged_data()
+
+
+def load_demo_data():
+    """
+    Loads df_demo_clean.csv for demographic lookup.
+    Returns a DataFrame indexed by ZIP code.
+    """
+    path = os.path.join(DATA_DIR, "df_demo_clean.csv")
+
+    df = pd.read_csv(path)
+
+    # Ensure ZIP is integer-like
+    if "zipcode" in df.columns:
+        df["zipcode"] = df["zipcode"].astype(int)
+        df = df.set_index("zipcode")
+
+    return df
