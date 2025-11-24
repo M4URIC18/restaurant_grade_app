@@ -97,7 +97,7 @@ def predict_restaurant_grade(restaurant_data: dict):
         "raw_output": probs.tolist()
     }
 
-st.subheader(" Map of Restaurants")
+
 
 # -------------------------------------------------------
 # Universal prediction using the raw restaurant dict
