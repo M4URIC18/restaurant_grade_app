@@ -311,6 +311,71 @@ with left_col:
 with right_col:
     st.subheader(" Inspect & Predict")
 
+    # -------------------------------------------------
+    # 👉 INSERT GOOGLE PANEL HERE (Step 7 block)
+    # -------------------------------------------------
+    if "google_result" in locals() and google_result:
+
+        st.markdown("## 🔍 Google Restaurant Selected")
+
+        g_lat = google_result["geometry"]["location"]["lat"]
+        g_lon = google_result["geometry"]["location"]["lng"]
+        g_name = google_result["name"]
+        g_address = google_result.get("formatted_address", "")
+
+        st.markdown(f"**Name:** {g_name}")
+        st.markdown(f"**Address:** {g_address}")
+        st.markdown(f"**ZIP:** {zipcode}")
+        st.markdown(f"**Borough:** {borough}")
+
+        # Let user refine cuisine
+        cuisine_guess = "other"
+        cuisine_input = st.text_input(
+            "Cuisine (optional)", 
+            value=cuisine_guess
+        )
+
+        # Build raw restaurant dict
+        raw_restaurant = {
+            "borough": borough,
+            "zipcode": zipcode,
+            "cuisine_description": cuisine_input,
+            "score": None,
+            "critical_flag_bin": None,
+        }
+
+        from src.predictor import predict_from_raw_restaurant
+
+        if st.button("Predict Grade (Google Restaurant)"):
+            pred = predict_from_raw_restaurant(raw_restaurant)
+            predicted_grade = pred["grade"]
+            probs = pred["probabilities"]
+            features = pred["features_used"]
+
+            st.markdown("### ⭐ Prediction Result")
+
+            color = get_grade_color(predicted_grade)
+            st.markdown(
+                f"**Predicted Grade:** <span style='color:{color}; font-size: 24px; font-weight:bold;'>{predicted_grade}</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown("#### Confidence")
+            for g, p in probs.items():
+                st.write(f"{g}: {p*100:.1f}%")
+
+        st.markdown("---")
+
+        # IMPORTANT: Stop the rest of the panel 
+        # so dataset UI does not show
+        st.stop()
+
+    # -------------------------------------------------
+    # END OF GOOGLE PANEL
+    # -------------------------------------------------
+
+
+
     if len(df_filtered) == 0:
         st.info("Use the filters to select at least one restaurant.")
     else:
