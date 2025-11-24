@@ -220,14 +220,16 @@ with left_col:
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
     else:
-        # Center map
+        # -------------------------------------------------
+        # 1. Create map centered on filtered dataset
+        # -------------------------------------------------
         center_lat = df_filtered["latitude"].mean()
         center_lon = df_filtered["longitude"].mean()
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
         # -------------------------------------------------
-        # Add dataset restaurants
+        # 2. Add dataset restaurants to the map
         # -------------------------------------------------
         for _, row in df_filtered.iterrows():
             lat = row["latitude"]
@@ -236,6 +238,7 @@ with left_col:
             color = get_grade_color(grade)
 
             popup_html = restaurant_popup_html(row)
+
             folium.CircleMarker(
                 location=[lat, lon],
                 radius=4,
@@ -246,38 +249,10 @@ with left_col:
             ).add_to(m)
 
         # -------------------------------------------------
-        # Add Google Places list results (Step 8)
-        # -------------------------------------------------
-        if "places_results" in st.session_state and st.session_state["places_results"]:
-            st.markdown("#### 🟦 Showing results from Google Places")
-
-            for place in st.session_state["places_results"]:
-                lat = place["latitude"]
-                lon = place["longitude"]
-                name = place["name"]
-                address = place["address"]
-
-                popup_html = f"""
-                <div style='font-size:14px;'>
-                    <b>{name}</b><br>
-                    <span>{address}</span><br>
-                    <i>(Google Places result)</i>
-                </div>
-                """
-
-                folium.CircleMarker(
-                    location=[lat, lon],
-                    radius=5,
-                    popup=folium.Popup(popup_html, max_width=250),
-                    color="#3498db",
-                    fill=True,
-                    fill_opacity=0.9
-                ).add_to(m)
-
-        # -------------------------------------------------
-        # Add single Google search restaurant
+        # 3. If Google restaurant exists → show marker
         # -------------------------------------------------
         if "google_result" in locals() and google_result:
+
             g_lat = google_result["geometry"]["location"]["lat"]
             g_lon = google_result["geometry"]["location"]["lng"]
             g_name = google_result["name"]
@@ -297,12 +272,12 @@ with left_col:
                 icon=folium.Icon(color="blue", icon="info-sign")
             ).add_to(m)
 
-            # Recenter
+            # Recenter map on Google result
             m.location = [g_lat, g_lon]
             m.zoom_start = 15
 
         # -------------------------------------------------
-        # Render the map
+        # 4. Render Folium map
         # -------------------------------------------------
         map_data = st_folium(
             m,
@@ -312,9 +287,8 @@ with left_col:
             returned_objects=["last_clicked"]
         )
 
-
         # -------------------------------------------------
-        # Detect map click
+        # 5. Detect map click
         # -------------------------------------------------
         if map_data and map_data.get("last_clicked"):
             click_lat = map_data["last_clicked"]["lat"]
@@ -323,10 +297,8 @@ with left_col:
             st.session_state["map_click"] = (click_lat, click_lon)
             st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
 
-
-
     # -------------------------------------------------
-    # Restaurant table (unchanged)
+    # 6. Restaurant table
     # -------------------------------------------------
     st.subheader("Restaurant List")
     st.caption("Filtered view based on your selections in the sidebar.")
