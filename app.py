@@ -148,6 +148,10 @@ if google_query:
 
         google_result = next(c for c in candidates if c["name"] == choice)
 
+        # Save for map display
+        st.session_state["google_result"] = google_result
+
+
         # 2. Get full details
         place_id = google_result["place_id"]
         details = google_place_details(place_id)
@@ -251,7 +255,9 @@ with left_col:
         # -------------------------------------------------
         # 3. If Google restaurant exists → show marker
         # -------------------------------------------------
-        if "google_result" in locals() and google_result:
+        if "google_result" in st.session_state:
+            google_result = st.session_state["google_result"]
+
 
             g_lat = google_result["geometry"]["location"]["lat"]
             g_lon = google_result["geometry"]["location"]["lng"]
@@ -383,7 +389,8 @@ with right_col:
     # -------------------------------------------------
     # 👉 INSERT GOOGLE PANEL HERE (Step 7 block)
     # -------------------------------------------------
-    if "google_result" in locals() and google_result:
+    if "google_result" in st.session_state:
+        google_result = st.session_state["google_result"]
 
         st.markdown("## 🔍 Google Restaurant Selected")
 
