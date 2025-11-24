@@ -231,45 +231,14 @@ with left_col:
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
     else:
-        # Center map at mean location
+        # Center map
         center_lat = df_filtered["latitude"].mean()
         center_lon = df_filtered["longitude"].mean()
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
-
-        # --------------------------------------------------------------------
-# 8. Add Google Places search results to the map (if any)
-# --------------------------------------------------------------------
-if "places_results" in st.session_state and st.session_state["places_results"]:
-    st.markdown("#### 🟦 Showing results from Google Places")
-
-    for place in st.session_state["places_results"]:
-        lat = place["latitude"]
-        lon = place["longitude"]
-        name = place["name"]
-        address = place["address"]
-
-        popup_html = f"""
-        <div style='font-size:14px;'>
-            <b>{name}</b><br>
-            <span>{address}</span><br>
-            <i>(Google Places result)</i>
-        </div>
-        """
-
-        folium.CircleMarker(
-            location=[lat, lon],
-            radius=5,
-            popup=folium.Popup(popup_html, max_width=250),
-            color="#3498db",
-            fill=True,
-            fill_opacity=0.9
-        ).add_to(m)
-
-
         # -------------------------------------------------
-        # Add markers from your dataset (existing code)
+        # Add dataset restaurants
         # -------------------------------------------------
         for _, row in df_filtered.iterrows():
             lat = row["latitude"]
@@ -288,11 +257,38 @@ if "places_results" in st.session_state and st.session_state["places_results"]:
             ).add_to(m)
 
         # -------------------------------------------------
-        # ✅ ADD GOOGLE RESTAURANT MARKER HERE
-        # (only if google_result exists)
+        # Add Google Places list results (Step 8)
+        # -------------------------------------------------
+        if "places_results" in st.session_state and st.session_state["places_results"]:
+            st.markdown("#### 🟦 Showing results from Google Places")
+
+            for place in st.session_state["places_results"]:
+                lat = place["latitude"]
+                lon = place["longitude"]
+                name = place["name"]
+                address = place["address"]
+
+                popup_html = f"""
+                <div style='font-size:14px;'>
+                    <b>{name}</b><br>
+                    <span>{address}</span><br>
+                    <i>(Google Places result)</i>
+                </div>
+                """
+
+                folium.CircleMarker(
+                    location=[lat, lon],
+                    radius=5,
+                    popup=folium.Popup(popup_html, max_width=250),
+                    color="#3498db",
+                    fill=True,
+                    fill_opacity=0.9
+                ).add_to(m)
+
+        # -------------------------------------------------
+        # Add single Google search restaurant
         # -------------------------------------------------
         if "google_result" in locals() and google_result:
-
             g_lat = google_result["geometry"]["location"]["lat"]
             g_lon = google_result["geometry"]["location"]["lng"]
             g_name = google_result["name"]
@@ -306,37 +302,35 @@ if "places_results" in st.session_state and st.session_state["places_results"]:
             </div>
             """
 
-            # Blue Google marker
             folium.Marker(
                 location=[g_lat, g_lon],
                 popup=folium.Popup(popup_html, max_width=300),
                 icon=folium.Icon(color="blue", icon="info-sign")
             ).add_to(m)
 
-            # Recenter map around Google restaurant
+            # Recenter
             m.location = [g_lat, g_lon]
             m.zoom_start = 15
 
-        # Render Folium map
-        st_data = st_folium(m, width="100%", height=500)
+        # -------------------------------------------------
+        # Render the map
+        # -------------------------------------------------
+        st_folium(m, width="100%", height=500)
 
-    # Restaurant table remains unchanged
+    # -------------------------------------------------
+    # Restaurant table (unchanged)
+    # -------------------------------------------------
     st.subheader("Restaurant List")
     st.caption("Filtered view based on your selections in the sidebar.")
 
-    # Show a simpler table
     cols_to_show = [
         c for c in ["DBA", "dba", "borough", "zipcode",
                     "cuisine_description", "score", "grade", "inspection_date"]
         if c in df_filtered.columns
     ]
-    if cols_to_show:
-        st.dataframe(
-            df_filtered[cols_to_show].head(300),
-            use_container_width=True
-        )
-    else:
-        st.dataframe(df_filtered.head(300), use_container_width=True)
+
+    st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
+
 
 
 with right_col:
