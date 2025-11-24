@@ -129,18 +129,16 @@ google_query = st.text_input(
 google_result = None
 
 if google_query:
-    import requests
 
-    API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
-
-    # 1. Autocomplete search
-    search_url = (
-        "https://maps.googleapis.com/maps/api/place/textsearch/json"
-        f"?query={google_query}&key={API_KEY}"
+    from src.places import (
+        google_text_search,
+        google_place_details,
+        reverse_geocode,
+        guess_cuisine_from_place
     )
 
-    response = requests.get(search_url).json()
-    candidates = response.get("results", [])
+    # 1. Search Google Places
+    candidates = google_text_search(google_query)
 
     if len(candidates) == 0:
         st.warning("No matching restaurants found.")
@@ -150,35 +148,22 @@ if google_query:
 
         google_result = next(c for c in candidates if c["name"] == choice)
 
-        # 2. Extract basic fields
-        lat = google_result["geometry"]["location"]["lat"]
-        lng = google_result["geometry"]["location"]["lng"]
-        place_name = google_result["name"]
-        address = google_result.get("formatted_address", "")
+        # 2. Get full details
+        place_id = google_result["place_id"]
+        details = google_place_details(place_id)
 
-        # 3. Reverse geocode ZIP from lat/lon
-        geo_url = (
-            "https://maps.googleapis.com/maps/api/geocode/json"
-            f"?latlng={lat},{lng}&key={API_KEY}"
-        )
-        geo_data = requests.get(geo_url).json()
+        lat = details["geometry"]["location"]["lat"]
+        lng = details["geometry"]["location"]["lng"]
+        place_name = details["name"]
+        address = details.get("formatted_address", "")
 
-        zipcode = None
-        borough = None
+        # ⭐ 3. Reverse geocode using our unified function
+        zipcode, borough = reverse_geocode(lat, lng)
 
-        if "results" in geo_data and len(geo_data["results"]) > 0:
-            for comp in geo_data["results"][0]["address_components"]:
-                if "postal_code" in comp["types"]:
-                    zipcode = comp["long_name"]
-                if "sublocality" in comp["types"] or "political" in comp["types"]:
-                    maybe = comp["long_name"]
-                    if maybe.lower() in ["manhattan", "bronx", "brooklyn", "queens", "staten island"]:
-                        borough = maybe.title()
+        # ⭐ 4. Guess the cuisine using Google “types”
+        cuisine_guess = guess_cuisine_from_place(details) or "Other"
 
-        # Cuisine = unknown (user can select later)
-        cuisine_guess = "other"
-
-        # Build raw restaurant dict
+        # 5. Build standardized restaurant dict
         raw_restaurant = {
             "borough": borough,
             "zipcode": zipcode,
@@ -192,8 +177,10 @@ if google_query:
         pred = predict_from_raw_restaurant(raw_restaurant)
         predicted_grade = pred["grade"]
         probs = pred["probabilities"]
-        features = pred["features_used"]
 
+        # -------------------------------------------------
+        # Display results
+        # -------------------------------------------------
         st.markdown("### ⭐ Google Search Prediction")
         st.markdown(f"**Name:** {place_name}")
         st.markdown(f"**Address:** {address}")
@@ -203,7 +190,8 @@ if google_query:
         color = get_grade_color(predicted_grade)
 
         st.markdown(
-            f"**Predicted Grade:** <span style='color:{color}; font-size: 26px; font-weight:bold'>{predicted_grade}</span>",
+            f"**Predicted Grade:** "
+            f"<span style='color:{color}; font-size: 26px; font-weight:bold'>{predicted_grade}</span>",
             unsafe_allow_html=True
         )
 
@@ -212,6 +200,7 @@ if google_query:
             st.write(f"{g}: {p*100:.1f}%")
 
         st.markdown("---")
+
 
 
 

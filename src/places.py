@@ -1,144 +1,80 @@
-import os
 import requests
+import os
+
+API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
 
 
-# -------------------------------------------------------
-# Read Google API key (we set it in app.py via secrets)
-# -------------------------------------------------------
-GOOGLE_API_KEY = os.environ.get("GOOGLE_MAPS_API_KEY")
-
-if not GOOGLE_API_KEY:
-    raise RuntimeError(
-        "❌ GOOGLE_MAPS_API_KEY not found in environment. "
-        "Make sure you added it to .streamlit/secrets.toml and app.py loads it."
-    )
-
-
-# -------------------------------------------------------
-# Text Search → find restaurants by name / keyword
-# -------------------------------------------------------
-def google_places_text_search(query: str):
-    """
-    Returns a list of places matching a search query.
-    Example: 'Starbucks Upper East Side'
-    """
-    url = "https://maps.googleapis.com/maps/api/place/textsearch/json"
-    params = {
-        "query": query,
-        "key": GOOGLE_API_KEY,
-    }
-    r = requests.get(url, params=params)
-    data = r.json()
-
-    if "results" not in data:
+# -------------------------------------------------
+# 1. Google Places Text Search
+# -------------------------------------------------
+def google_text_search(query):
+    if not API_KEY:
         return []
 
-    return data["results"]
+    url = (
+        "https://maps.googleapis.com/maps/api/place/textsearch/json"
+        f"?query={query}&key={API_KEY}"
+    )
+
+    resp = requests.get(url).json()
+    return resp.get("results", [])
 
 
-# -------------------------------------------------------
-# Place Details → get full info from place_id
-# -------------------------------------------------------
-def google_place_details(place_id: str):
+# -------------------------------------------------
+# 2. Resolve Borough + ZIP from coordinates
+# -------------------------------------------------
+def reverse_geocode(lat, lng):
     """
-    Returns full details for a specific Google place_id
-    including address, lat/lon, formatted_phone_number, types, etc.
+    Return zipcode + borough using Google Geocoding API
     """
-    url = "https://maps.googleapis.com/maps/api/place/details/json"
-    params = {
-        "place_id": place_id,
-        "fields": "name,formatted_address,geometry,types,formatted_phone_number",
-        "key": GOOGLE_API_KEY,
-    }
-    r = requests.get(url, params=params)
-    data = r.json()
+    if not API_KEY:
+        return None, None
 
-    if "result" not in data:
-        return {}
+    url = (
+        "https://maps.googleapis.com/maps/api/geocode/json"
+        f"?latlng={lat},{lng}&key={API_KEY}"
+    )
 
-    return data["result"]
-
-
-# -------------------------------------------------------
-# Reverse Geocode → lat/lon → ZIP & Borough
-# -------------------------------------------------------
-def reverse_geocode_zip(lat: float, lng: float):
-    """
-    Reverse geocode to get ZIP code + borough from coordinates.
-    """
-    url = "https://maps.googleapis.com/maps/api/geocode/json"
-    params = {
-        "latlng": f"{lat},{lng}",
-        "key": GOOGLE_API_KEY,
-    }
-
-    r = requests.get(url, params=params)
-    data = r.json()
+    data = requests.get(url).json()
 
     zipcode = None
     borough = None
 
-    if "results" not in data:
-        return zipcode, borough
+    if "results" in data and len(data["results"]) > 0:
+        for c in data["results"][0]["address_components"]:
+            if "postal_code" in c["types"]:
+                zipcode = c["long_name"]
 
-    for result in data["results"]:
-        for comp in result["address_components"]:
-            if "postal_code" in comp["types"]:
-                zipcode = comp["long_name"]
-            if "sublocality_level_1" in comp["types"]:
-                borough = comp["long_name"]
-
-    # Normalize borough (Google sometimes returns weird names)
-    if borough:
-        borough = borough.title()
+            if "sublocality" in c["types"] or "political" in c["types"]:
+                maybe = c["long_name"].lower()
+                borough_map = {
+                    "manhattan": "Manhattan",
+                    "bronx": "Bronx",
+                    "brooklyn": "Brooklyn",
+                    "queens": "Queens",
+                    "staten island": "Staten Island"
+                }
+                if maybe in borough_map:
+                    borough = borough_map[maybe]
 
     return zipcode, borough
 
 
-# -------------------------------------------------------
-# Clean Google result → minimal restaurant dict
-# -------------------------------------------------------
-def normalize_place_to_restaurant(place_details: dict):
+# -------------------------------------------------
+# 3. Guess cuisine from Google Tags
+# -------------------------------------------------
+def guess_cuisine_from_place(place_obj):
     """
-    Takes a Google Places Details result and returns a clean dict
-    with fields your model pipeline can later use.
+    Google Places sometimes returns:
+    place["types"] = ["restaurant", "thai_restaurant", "food", ...]
+
+    This function converts "thai_restaurant" → "Thai"
     """
+    types = place_obj.get("types", [])
+    cuisine_tags = [t for t in types if "_restaurant" in t]
 
-    lat = place_details["geometry"]["location"]["lat"]
-    lng = place_details["geometry"]["location"]["lng"]
+    if len(cuisine_tags) == 0:
+        return None
 
-    zipcode, borough = reverse_geocode_zip(lat, lng)
-
-    # Guess a cuisine from Google "types" list
-    types = place_details.get("types", [])
-    cuisine = None
-
-    for t in types:
-        if "restaurant" in t:
-            continue
-        if "food" in t:
-            continue
-        if t not in ["point_of_interest", "establishment"]:
-            cuisine = t.replace("_", " ")
-            break
-
-    # Fallback cuisine
-    if cuisine is None:
-        cuisine = "other"
-
-    # Build raw restaurant dict
-    return {
-        "name": place_details.get("name"),
-        "address": place_details.get("formatted_address"),
-        "latitude": lat,
-        "longitude": lng,
-
-        # Core model input fields
-        "borough": borough,
-        "zipcode": zipcode,
-        "cuisine_description": cuisine,
-
-        # Score and critical flag we will fill later
-        "score": None,
-        "critical_flag_bin": None,
-    }
+    raw = cuisine_tags[0].replace("_restaurant", "")
+    return raw.replace("_", " ").title()
