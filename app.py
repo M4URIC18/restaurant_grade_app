@@ -14,6 +14,15 @@ from src.utils import (
     restaurant_popup_html,
     normalize_text,
 )
+# Google Places module (step 12)
+from src.places import (
+    google_places_text_search,
+    google_place_details,
+    reverse_geocode,
+    normalize_place_to_restaurant,
+    guess_cuisine_from_place
+)
+
 
 # -------------------------------------------------
 # Google API key (from Streamlit secrets)
@@ -322,8 +331,9 @@ with right_col:
                     borough = comp["long_name"].title()
 
         st.write(f"**Address:** {address}")
-        st.write(f"**ZIP:** {zipcode}")
-        st.write(f"**Borough:** {borough}")
+        st.write(f"**ZIP:** {g['zipcode']}")
+        st.write(f"**Borough:** {g['borough']}")
+
 
         # Predict assuming unknown cuisine
         from src.predictor import predict_from_raw_restaurant
