@@ -315,7 +315,26 @@ with left_col:
         # -------------------------------------------------
         # Render the map
         # -------------------------------------------------
-        st_folium(m, width="100%", height=500)
+        map_data = st_folium(
+            m,
+            width="100%",
+            height=500,
+            key="main_map",
+            returned_objects=["last_clicked"]
+        )
+
+
+        # -------------------------------------------------
+        # Detect map click
+        # -------------------------------------------------
+        if map_data and map_data.get("last_clicked"):
+            click_lat = map_data["last_clicked"]["lat"]
+            click_lon = map_data["last_clicked"]["lng"]
+
+            st.session_state["map_click"] = (click_lat, click_lon)
+            st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
+
+
 
     # -------------------------------------------------
     # Restaurant table (unchanged)
@@ -335,6 +354,70 @@ with left_col:
 
 with right_col:
     st.subheader(" Inspect & Predict")
+
+
+    # -------------------------------------------------
+    # If user clicked the map, reverse geocode + predict
+    # -------------------------------------------------
+    if "map_click" in st.session_state:
+        clat, clon = st.session_state["map_click"]
+
+        st.markdown("## 📍 Map Click Detected")
+
+        # Reverse geocode ZIP + borough
+        import requests
+        API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
+        geo_url = (
+            "https://maps.googleapis.com/maps/api/geocode/json"
+            f"?latlng={clat},{clon}&key={API_KEY}"
+        )
+        geo_data = requests.get(geo_url).json()
+
+        zipcode = None
+        borough = None
+        address = None
+
+        if "results" in geo_data and geo_data["results"]:
+            address = geo_data["results"][0].get("formatted_address", "")
+            for comp in geo_data["results"][0]["address_components"]:
+                if "postal_code" in comp["types"]:
+                    zipcode = comp["long_name"]
+                if comp["long_name"].lower() in ["manhattan", "bronx", "brooklyn", "queens", "staten island"]:
+                    borough = comp["long_name"].title()
+
+        st.write(f"**Address:** {address}")
+        st.write(f"**ZIP:** {zipcode}")
+        st.write(f"**Borough:** {borough}")
+
+        # Predict assuming unknown cuisine
+        from src.predictor import predict_from_raw_restaurant
+
+        raw_restaurant = {
+            "borough": borough,
+            "zipcode": zipcode,
+            "cuisine_description": "Unknown",
+            "score": None,
+            "critical_flag_bin": None,
+        }
+
+        pred = predict_from_raw_restaurant(raw_restaurant)
+
+        grade = pred["grade"]
+        probs = pred["probabilities"]
+        color = get_grade_color(grade)
+
+        st.markdown(
+            f"### 🍽️ Prediction for Clicked Location: "
+            f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("#### Confidence")
+        for g, p in probs.items():
+            st.write(f"{g}: {p*100:.1f}%")
+
+        st.markdown("---")
+
 
     # -------------------------------------------------
     # 👉 INSERT GOOGLE PANEL HERE (Step 7 block)
