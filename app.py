@@ -117,7 +117,7 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
 # -------------------------------------------------
-# Google Search for ANY restaurant
+# Google Search (Step 12 – unified)
 # -------------------------------------------------
 st.subheader(" Search Any Restaurant (Google Places)")
 
@@ -126,76 +126,49 @@ google_query = st.text_input(
     placeholder="e.g. Shake Shack, Katz Deli, Chipotle…"
 )
 
-google_result = None
+# Session slot for a normalized restaurant record
+if "google_restaurant" not in st.session_state:
+    st.session_state["google_restaurant"] = None
 
 if google_query:
+    # 1. Search Google Places (text search)
+    places = google_places_text_search(google_query)
 
-    from src.places import (
-        google_text_search,
-        google_place_details,
-        reverse_geocode,
-        guess_cuisine_from_place
-    )
-
-    # 1. Search Google Places
-    candidates = google_text_search(google_query)
-
-    if len(candidates) == 0:
+    if not places:
         st.warning("No matching restaurants found.")
     else:
-        names = [c["name"] for c in candidates]
+        names = [p["name"] for p in places]
         choice = st.selectbox("Select restaurant:", names)
 
-        google_result = next(c for c in candidates if c["name"] == choice)
+        selected = next(p for p in places if p["name"] == choice)
 
-        # Save for map display
-        st.session_state["google_result"] = google_result
+        # 2. Get full details from place_id
+        details = google_place_details(selected["place_id"])
 
+        # 3. Normalize → (name, address, lat, lon, borough, zipcode, cuisine,...)
+        norm = normalize_place_to_restaurant(details)
 
-        # 2. Get full details
-        place_id = google_result["place_id"]
-        details = google_place_details(place_id)
+        # store in session for map + prediction
+        st.session_state["google_restaurant"] = norm
 
-        lat = details["geometry"]["location"]["lat"]
-        lng = details["geometry"]["location"]["lng"]
-        place_name = details["name"]
-        address = details.get("formatted_address", "")
-
-        # ⭐ 3. Reverse geocode using our unified function
-        zipcode, borough = reverse_geocode(lat, lng)
-
-        # ⭐ 4. Guess the cuisine using Google “types”
-        cuisine_guess = guess_cuisine_from_place(details) or "Other"
-
-        # 5. Build standardized restaurant dict
-        raw_restaurant = {
-            "borough": borough,
-            "zipcode": zipcode,
-            "cuisine_description": cuisine_guess,
-            "score": None,
-            "critical_flag_bin": None,
-        }
-
+        # 4. Predict grade
         from src.predictor import predict_from_raw_restaurant
-
-        pred = predict_from_raw_restaurant(raw_restaurant)
-        predicted_grade = pred["grade"]
+        pred = predict_from_raw_restaurant(norm)
+        grade = pred["grade"]
         probs = pred["probabilities"]
+        color = get_grade_color(grade)
 
-        # -------------------------------------------------
-        # Display results
-        # -------------------------------------------------
+        # 5. Display
         st.markdown("### ⭐ Google Search Prediction")
-        st.markdown(f"**Name:** {place_name}")
-        st.markdown(f"**Address:** {address}")
-        st.markdown(f"**ZIP:** {zipcode}")
-        st.markdown(f"**Borough:** {borough}")
-
-        color = get_grade_color(predicted_grade)
+        st.write(f"**Name:** {norm['name']}")
+        st.write(f"**Address:** {norm['address']}")
+        st.write(f"**ZIP:** {norm['zipcode']}")
+        st.write(f"**Borough:** {norm['borough']}")
+        st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
         st.markdown(
             f"**Predicted Grade:** "
-            f"<span style='color:{color}; font-size: 26px; font-weight:bold'>{predicted_grade}</span>",
+            f"<span style='color:{color}; font-size:26px; font-weight:bold'>{grade}</span>",
             unsafe_allow_html=True
         )
 
@@ -204,6 +177,7 @@ if google_query:
             st.write(f"{g}: {p*100:.1f}%")
 
         st.markdown("---")
+
 
 
 
@@ -253,34 +227,29 @@ with left_col:
             ).add_to(m)
 
         # -------------------------------------------------
-        # 3. If Google restaurant exists → show marker
+        # Google restaurant marker (Step 12)
         # -------------------------------------------------
-        if "google_result" in st.session_state:
-            google_result = st.session_state["google_result"]
-
-
-            g_lat = google_result["geometry"]["location"]["lat"]
-            g_lon = google_result["geometry"]["location"]["lng"]
-            g_name = google_result["name"]
-            g_address = google_result.get("formatted_address", "")
+        if st.session_state.get("google_restaurant"):
+            g = st.session_state["google_restaurant"]
 
             popup_html = f"""
             <div style="font-size:14px;">
-                <b>{g_name}</b><br>
-                <span>{g_address}</span><br>
+                <b>{g['name']}</b><br>
+                {g['address']}<br>
                 <span style='color:blue;'>Google Search Result</span>
             </div>
             """
 
             folium.Marker(
-                location=[g_lat, g_lon],
+                location=[g["latitude"], g["longitude"]],
                 popup=folium.Popup(popup_html, max_width=300),
                 icon=folium.Icon(color="blue", icon="info-sign")
             ).add_to(m)
 
-            # Recenter map on Google result
-            m.location = [g_lat, g_lon]
+            # recenter map
+            m.location = [g["latitude"], g["longitude"]]
             m.zoom_start = 15
+
 
         # -------------------------------------------------
         # 4. Render Folium map
@@ -389,62 +358,50 @@ with right_col:
     # -------------------------------------------------
     # 👉 INSERT GOOGLE PANEL HERE (Step 7 block)
     # -------------------------------------------------
-    if "google_result" in st.session_state:
-        google_result = st.session_state["google_result"]
+    # -------------------------------------------------
+    # Right column – Google restaurant details (Step 12)
+    # -------------------------------------------------
+    if st.session_state.get("google_restaurant"):
+        g = st.session_state["google_restaurant"]
 
         st.markdown("## 🔍 Google Restaurant Selected")
+        st.write(f"**Name:** {g['name']}")
+        st.write(f"**Address:** {g['address']}")
+        st.write(f"**ZIP:** {g['zipcode']}")
+        st.write(f"**Borough:** {g['borough']}")
+        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
 
-        g_lat = google_result["geometry"]["location"]["lat"]
-        g_lon = google_result["geometry"]["location"]["lng"]
-        g_name = google_result["name"]
-        g_address = google_result.get("formatted_address", "")
-
-        st.markdown(f"**Name:** {g_name}")
-        st.markdown(f"**Address:** {g_address}")
-        st.markdown(f"**ZIP:** {zipcode}")
-        st.markdown(f"**Borough:** {borough}")
-
-        # Let user refine cuisine
-        cuisine_guess = "other"
         cuisine_input = st.text_input(
-            "Cuisine (optional)", 
-            value=cuisine_guess
+            "Refine Cuisine (optional):",
+            value=g["cuisine_description"]
         )
 
-        # Build raw restaurant dict
-        raw_restaurant = {
-            "borough": borough,
-            "zipcode": zipcode,
-            "cuisine_description": cuisine_input,
-            "score": None,
-            "critical_flag_bin": None,
-        }
-
-        from src.predictor import predict_from_raw_restaurant
-
+        # Predict with refined cuisine
         if st.button("Predict Grade (Google Restaurant)"):
-            pred = predict_from_raw_restaurant(raw_restaurant)
-            predicted_grade = pred["grade"]
+            refined = g.copy()
+            refined["cuisine_description"] = cuisine_input
+
+            from src.predictor import predict_from_raw_restaurant
+            pred = predict_from_raw_restaurant(refined)
+
+            grade = pred["grade"]
             probs = pred["probabilities"]
-            features = pred["features_used"]
+            color = get_grade_color(grade)
 
             st.markdown("### ⭐ Prediction Result")
-
-            color = get_grade_color(predicted_grade)
             st.markdown(
-                f"**Predicted Grade:** <span style='color:{color}; font-size: 24px; font-weight:bold;'>{predicted_grade}</span>",
+                f"<span style='color:{color}; font-size:24px; font-weight:bold;'>{grade}</span>",
                 unsafe_allow_html=True
             )
 
             st.markdown("#### Confidence")
-            for g, p in probs.items():
-                st.write(f"{g}: {p*100:.1f}%")
+            for h, p in probs.items():
+                st.write(f"{h}: {p*100:.1f}%")
 
         st.markdown("---")
-
-        # IMPORTANT: Stop the rest of the panel 
-        # so dataset UI does not show
+        # stop remaining UI
         st.stop()
+
 
     # -------------------------------------------------
     # END OF GOOGLE PANEL
