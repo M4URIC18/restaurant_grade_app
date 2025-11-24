@@ -237,6 +237,37 @@ with left_col:
 
         m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
 
+
+        # --------------------------------------------------------------------
+# 8. Add Google Places search results to the map (if any)
+# --------------------------------------------------------------------
+if "places_results" in st.session_state and st.session_state["places_results"]:
+    st.markdown("#### 🟦 Showing results from Google Places")
+
+    for place in st.session_state["places_results"]:
+        lat = place["latitude"]
+        lon = place["longitude"]
+        name = place["name"]
+        address = place["address"]
+
+        popup_html = f"""
+        <div style='font-size:14px;'>
+            <b>{name}</b><br>
+            <span>{address}</span><br>
+            <i>(Google Places result)</i>
+        </div>
+        """
+
+        folium.CircleMarker(
+            location=[lat, lon],
+            radius=5,
+            popup=folium.Popup(popup_html, max_width=250),
+            color="#3498db",
+            fill=True,
+            fill_opacity=0.9
+        ).add_to(m)
+
+
         # -------------------------------------------------
         # Add markers from your dataset (existing code)
         # -------------------------------------------------
