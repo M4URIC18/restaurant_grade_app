@@ -16,10 +16,8 @@ from src.utils import (
 )
 # Google Places module (step 12)
 from src.places import (
-    google_places_text_search,
-    google_place_details,
+    google_text_search,
     reverse_geocode,
-    normalize_place_to_restaurant,
     guess_cuisine_from_place
 )
 
@@ -135,39 +133,47 @@ google_query = st.text_input(
     placeholder="e.g. Shake Shack, Katz Deli, Chipotle…"
 )
 
-# Session slot for a normalized restaurant record
+# Session slot
 if "google_restaurant" not in st.session_state:
     st.session_state["google_restaurant"] = None
 
 if google_query:
-    # 1. Search Google Places (text search)
-    places = google_places_text_search(google_query)
+    from src.places import (
+        google_text_search,
+        google_place_details,
+        normalize_place_to_restaurant
+    )
+
+    # 1. Text search
+    places = google_text_search(google_query)
 
     if not places:
         st.warning("No matching restaurants found.")
     else:
+        # Let user choose the correct result
         names = [p["name"] for p in places]
         choice = st.selectbox("Select restaurant:", names)
 
         selected = next(p for p in places if p["name"] == choice)
 
-        # 2. Get full details from place_id
+        # 2. Get full details
         details = google_place_details(selected["place_id"])
 
         # 3. Normalize → (name, address, lat, lon, borough, zipcode, cuisine,...)
         norm = normalize_place_to_restaurant(details)
 
-        # store in session for map + prediction
+        # Store normalized record
         st.session_state["google_restaurant"] = norm
 
         # 4. Predict grade
         from src.predictor import predict_from_raw_restaurant
         pred = predict_from_raw_restaurant(norm)
+
         grade = pred["grade"]
         probs = pred["probabilities"]
         color = get_grade_color(grade)
 
-        # 5. Display
+        # 5. Display basic info
         st.markdown("### ⭐ Google Search Prediction")
         st.write(f"**Name:** {norm['name']}")
         st.write(f"**Address:** {norm['address']}")
@@ -186,6 +192,7 @@ if google_query:
             st.write(f"{g}: {p*100:.1f}%")
 
         st.markdown("---")
+
 
 
 
