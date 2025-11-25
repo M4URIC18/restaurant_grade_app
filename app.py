@@ -250,35 +250,41 @@ with left_col:
         # Google Nearby Restaurants (Step 13)
         # -------------------------------------------------
         nearby = []
-
-        # Only load if user clicked the map
         if "map_click" in st.session_state:
             clat, clon = st.session_state["map_click"]
 
-            # Get 20-60 restaurants around the clicked location
-            nearby = google_nearby_restaurants(clat, clon)
+            from src.places import google_text_search
 
-        # Add blue markers for nearby restaurants
-        for place in nearby:
-            plat = place["geometry"]["location"]["lat"]
-            plon = place["geometry"]["location"]["lng"]
-            pname = place.get("name", "Unknown")
+            # Search for "restaurants near lat,lon"
+            nearby_query = f"restaurants near {clat},{clon}"
+            nearby = google_text_search(nearby_query)
 
-            popup_html = f"""
-            <div style='font-size:14px;'>
-                <b>{pname}</b><br>
-                <i>Google Nearby Restaurant</i>
-            </div>
-            """
+            for place in nearby:
+                plat = place["geometry"]["location"]["lat"]
+                plon = place["geometry"]["location"]["lng"]
+                name = place.get("name", "Unknown")
 
-            folium.CircleMarker(
-                location=[plat, plon],
-                radius=5,
-                popup=folium.Popup(popup_html, max_width=250),
-                color="#1e90ff",
-                fill=True,
-                fill_opacity=0.9
-            ).add_to(m)
+                popup_html = f"""
+                <div style='font-size:14px;'>
+                    <b>{name}</b><br>
+                    <i>(Google Nearby Restaurant)</i>
+                </div>
+                """
+
+                marker = folium.CircleMarker(
+                    location=[plat, plon],
+                    radius=5,
+                    popup=folium.Popup(popup_html, max_width=250),
+                    color="#1e90ff",
+                    fill=True,
+                    fill_opacity=0.9
+                )
+
+                marker.add_to(m)
+
+                # Attach place_id to marker object for detection later
+                marker.place_id = place.get("place_id")
+
 
 
 
