@@ -20,7 +20,8 @@ from src.places import (
     google_place_details,
     reverse_geocode,
     guess_cuisine_from_place,
-    normalize_place_to_restaurant
+    normalize_place_to_restaurant,
+    google_nearby_restaurants
 )
 
 
@@ -238,6 +239,43 @@ with left_col:
                 fill=True,
                 fill_opacity=0.8
             ).add_to(m)
+
+
+        # -------------------------------------------------
+        # Google Nearby Restaurants (Step 13)
+        # -------------------------------------------------
+        nearby = []
+
+        # Only load if user clicked the map
+        if "map_click" in st.session_state:
+            clat, clon = st.session_state["map_click"]
+
+            # Get 20-60 restaurants around the clicked location
+            nearby = google_nearby_restaurants(clat, clon)
+
+        # Add blue markers for nearby restaurants
+        for place in nearby:
+            plat = place["geometry"]["location"]["lat"]
+            plon = place["geometry"]["location"]["lng"]
+            pname = place.get("name", "Unknown")
+
+            popup_html = f"""
+            <div style='font-size:14px;'>
+                <b>{pname}</b><br>
+                <i>Google Nearby Restaurant</i>
+            </div>
+            """
+
+            folium.CircleMarker(
+                location=[plat, plon],
+                radius=5,
+                popup=folium.Popup(popup_html, max_width=250),
+                color="#1e90ff",
+                fill=True,
+                fill_opacity=0.9
+            ).add_to(m)
+
+
 
         # -------------------------------------------------
         # Google restaurant marker (Step 12)

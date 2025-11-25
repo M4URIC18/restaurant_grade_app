@@ -124,3 +124,20 @@ def normalize_place_to_restaurant(details):
         "score": None,
         "critical_flag_bin": None,
     }
+
+
+def google_nearby_restaurants(lat, lng, radius=800):
+    """
+    Return nearby restaurants using Google Places Nearby Search.
+    """
+    if not API_KEY:
+        return []
+
+    url = (
+        "https://maps.googleapis.com/maps/api/place/nearbysearch/json"
+        f"?location={lat},{lng}&radius={radius}&type=restaurant&key={API_KEY}"
+    )
+
+    resp = requests.get(url).json()
+    return resp.get("results", [])
+
