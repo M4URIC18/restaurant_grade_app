@@ -140,11 +140,6 @@ if "google_restaurant" not in st.session_state:
     st.session_state["google_restaurant"] = None
 
 if google_query:
-    from src.places import (
-        google_text_search,
-        google_place_details,
-        normalize_place_to_restaurant
-    )
 
     # 1. Text search
     places = google_text_search(google_query)
