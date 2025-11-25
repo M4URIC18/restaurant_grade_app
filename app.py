@@ -342,6 +342,7 @@ with right_col:
         st.write(f"**Borough:** {g['borough']}")
 
 
+
         # Predict assuming unknown cuisine
         from src.predictor import predict_from_raw_restaurant
 
