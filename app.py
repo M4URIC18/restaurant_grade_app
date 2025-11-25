@@ -231,9 +231,16 @@ with left_col:
 
             popup_html = restaurant_popup_html(row)
 
+            marker = folium.CircleMarker(
+                location=[lat, lon],
+                radius=4,
+                popup=folium.Popup(popup_html, max_width=250),
+                color=color,
+                fill=True,
+                fill_opacity=0.8
+            )
 
-            # store place_id for later prediction
-            marker.place_id = place.get("place_id")
+            marker.add_to(m)
 
 
         # -------------------------------------------------
