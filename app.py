@@ -231,14 +231,19 @@ with left_col:
 
             popup_html = restaurant_popup_html(row)
 
-            folium.CircleMarker(
-                location=[lat, lon],
-                radius=4,
+            marker = folium.CircleMarker(
+                location=[plat, plon],
+                radius=5,
                 popup=folium.Popup(popup_html, max_width=250),
-                color=color,
+                color="#1e90ff",
                 fill=True,
-                fill_opacity=0.8
-            ).add_to(m)
+                fill_opacity=0.9
+            )
+
+            marker.add_to(m)
+
+            # store place_id for later prediction
+            marker.place_id = place.get("place_id")
 
 
         # -------------------------------------------------
@@ -341,6 +346,70 @@ with left_col:
 
 with right_col:
     st.subheader(" Inspect & Predict")
+
+    # -------------------------------------------------
+    # NEW: Detect nearest Google Nearby Restaurant clicked
+    # -------------------------------------------------
+    if "google_nearby" not in st.session_state:
+        st.session_state["google_nearby"] = []
+
+    # Find the closest nearby marker to the click
+    clicked_lat = clat
+    clicked_lon = clon
+
+    closest = None
+    min_dist = float("inf")
+
+    for place in nearby:
+        plat = place["geometry"]["location"]["lat"]
+        plon = place["geometry"]["location"]["lng"]
+
+        dist = (plat - clicked_lat)**2 + (plon - clicked_lon)**2
+
+        if dist < min_dist:
+            min_dist = dist
+            closest = place
+
+    # If the closest marker is extremely close → treat it as clicked restaurant
+    if closest and min_dist < 0.00005:
+        st.markdown("## 🍽️ Google Nearby Restaurant Selected")
+
+        # fetch place details
+        details = google_place_details(closest["place_id"])
+
+        # normalize for model
+        norm = normalize_place_to_restaurant(details)
+
+        # save
+        st.session_state["google_restaurant_nearby"] = norm
+
+        st.write(f"**Name:** {norm['name']}")
+        st.write(f"**Address:** {norm['address']}")
+        st.write(f"**ZIP:** {norm['zipcode']}")
+        st.write(f"**Borough:** {norm['borough']}")
+        st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
+
+        # Predict
+        pred = predict_from_raw_restaurant(norm)
+        grade = pred["grade"]
+        probs = pred["probabilities"]
+        color = get_grade_color(grade)
+
+        st.markdown(
+            f"### ⭐ Predicted Grade: "
+            f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+            unsafe_allow_html=True
+        )
+
+        st.markdown("#### Confidence")
+        for g, p in probs.items():
+            st.write(f"{g}: {p*100:.1f}%")
+
+        st.markdown("---")
+
+        # Stop further UI
+        st.stop()
+
 
 
     # -------------------------------------------------
