@@ -17,8 +17,10 @@ from src.utils import (
 # Google Places module (step 12)
 from src.places import (
     google_text_search,
+    google_place_details,
     reverse_geocode,
-    guess_cuisine_from_place
+    guess_cuisine_from_place,
+    normalize_place_to_restaurant
 )
 
 
@@ -338,8 +340,8 @@ with right_col:
                     borough = comp["long_name"].title()
 
         st.write(f"**Address:** {address}")
-        st.write(f"**ZIP:** {g['zipcode']}")
-        st.write(f"**Borough:** {g['borough']}")
+        st.write(f"**ZIP:** {zipcode}")
+        st.write(f"**Borough:** {borough}")
 
 
 

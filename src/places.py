@@ -21,12 +21,25 @@ def google_text_search(query):
 
 
 # -------------------------------------------------
-# 2. Resolve Borough + ZIP from coordinates
+# 2. Google Place Details (full data from place_id)
+# -------------------------------------------------
+def google_place_details(place_id):
+    if not API_KEY:
+        return {}
+
+    url = (
+        "https://maps.googleapis.com/maps/api/place/details/json"
+        f"?place_id={place_id}&key={API_KEY}"
+    )
+
+    data = requests.get(url).json()
+    return data.get("result", {})
+
+
+# -------------------------------------------------
+# 3. Reverse geocode → get zipcode + borough
 # -------------------------------------------------
 def reverse_geocode(lat, lng):
-    """
-    Return zipcode + borough using Google Geocoding API
-    """
     if not API_KEY:
         return None, None
 
@@ -61,15 +74,9 @@ def reverse_geocode(lat, lng):
 
 
 # -------------------------------------------------
-# 3. Guess cuisine from Google Tags
+# 4. Guess cuisine from Google “types”
 # -------------------------------------------------
 def guess_cuisine_from_place(place_obj):
-    """
-    Google Places sometimes returns:
-    place["types"] = ["restaurant", "thai_restaurant", "food", ...]
-
-    This function converts "thai_restaurant" → "Thai"
-    """
     types = place_obj.get("types", [])
     cuisine_tags = [t for t in types if "_restaurant" in t]
 
@@ -78,3 +85,42 @@ def guess_cuisine_from_place(place_obj):
 
     raw = cuisine_tags[0].replace("_restaurant", "")
     return raw.replace("_", " ").title()
+
+
+# -------------------------------------------------
+# 5. Normalize Google API result → standard restaurant dict
+# -------------------------------------------------
+def normalize_place_to_restaurant(details):
+    """
+    Takes Google Place Details result and produces a clean, standardized dict
+    that the predictor can use.
+    """
+
+    # required fields
+    name = details.get("name", "")
+    address = details.get("formatted_address", "")
+
+    lat = details["geometry"]["location"]["lat"]
+    lng = details["geometry"]["location"]["lng"]
+
+    # zipcode + borough
+    zipcode, borough = reverse_geocode(lat, lng)
+
+    # cuisine guess
+    cuisine = guess_cuisine_from_place(details) or "Other"
+
+    return {
+        "name": name,
+        "address": address,
+        "latitude": lat,
+        "longitude": lng,
+
+        # model-required fields
+        "zipcode": zipcode,
+        "borough": borough,
+        "cuisine_description": cuisine,
+
+        # these will be None → model handles them properly
+        "score": None,
+        "critical_flag_bin": None,
+    }
