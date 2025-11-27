@@ -357,24 +357,19 @@ with right_col:
     # NEW: Detect nearest Google Nearby Restaurant clicked
     # -------------------------------------------------
 
-    # Ensure session lists exist
+    # Ensure session list exists
     if "google_nearby" not in st.session_state:
         st.session_state["google_nearby"] = []
 
-    # ❗ Do NOT run detection unless BOTH exist:
-    # - user clicked map (map_click exists)
-    # - google_nearby has results
+    # Run ONLY if:
+    # - user clicked the map
+    # - AND we previously saved google_nearby results
     if (
         "map_click" in st.session_state
         and "google_nearby" in st.session_state
         and len(st.session_state["google_nearby"]) > 0
     ):
-
-
-        clat, clon = st.session_state["map_click"]
-
-        clicked_lat = clat
-        clicked_lon = clon
+        click_lat, click_lon = st.session_state["map_click"]
 
         closest = None
         min_dist = float("inf")
@@ -384,7 +379,7 @@ with right_col:
             plat = place["geometry"]["location"]["lat"]
             plon = place["geometry"]["location"]["lng"]
 
-            dist = (plat - clicked_lat)**2 + (plon - clicked_lon)**2
+            dist = (plat - click_lat)**2 + (plon - click_lon)**2
 
             if dist < min_dist:
                 min_dist = dist
@@ -412,6 +407,7 @@ with right_col:
             st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
             # Predict grade
+            from src.predictor import predict_from_raw_restaurant
             pred = predict_from_raw_restaurant(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
@@ -433,13 +429,12 @@ with right_col:
             st.stop()
 
 
-
-
     # -------------------------------------------------
     # If user clicked the map, reverse geocode + predict
+    # (ONLY run if nearby did NOT take over)
     # -------------------------------------------------
     if "map_click" in st.session_state:
-        clat, clon = st.session_state["map_click"]
+        click_lat, click_lon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
 
@@ -448,7 +443,7 @@ with right_col:
         API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
         geo_url = (
             "https://maps.googleapis.com/maps/api/geocode/json"
-            f"?latlng={clat},{clon}&key={API_KEY}"
+            f"?latlng={click_lat},{click_lon}&key={API_KEY}"
         )
         geo_data = requests.get(geo_url).json()
 
@@ -467,8 +462,6 @@ with right_col:
         st.write(f"**Address:** {address}")
         st.write(f"**ZIP:** {zipcode}")
         st.write(f"**Borough:** {borough}")
-
-
 
         # Predict assuming unknown cuisine
         from src.predictor import predict_from_raw_restaurant
@@ -499,12 +492,8 @@ with right_col:
 
         st.markdown("---")
 
-
     # -------------------------------------------------
-    # 👉 INSERT GOOGLE PANEL HERE (Step 7 block)
-    # -------------------------------------------------
-    # -------------------------------------------------
-    # Right column – Google restaurant details (Step 12)
+    # Google SEARCH restaurant panel (Step 12)
     # -------------------------------------------------
     if st.session_state.get("google_restaurant"):
         g = st.session_state["google_restaurant"]
@@ -544,30 +533,25 @@ with right_col:
                 st.write(f"{h}: {p*100:.1f}%")
 
         st.markdown("---")
-        # stop remaining UI
         st.stop()
 
-
     # -------------------------------------------------
-    # END OF GOOGLE PANEL
+    # DATASET restaurant prediction panel
     # -------------------------------------------------
-
-
-
     if len(df_filtered) == 0:
         st.info("Use the filters to select at least one restaurant.")
     else:
-        # Let user pick a restaurant from a dropdown
-        # Use name + zip as label
+        # Let user select restaurant from table
         if "dba" in df_filtered.columns:
             name_col = "dba"
         elif "DBA" in df_filtered.columns:
             name_col = "DBA"
         else:
-            name_col = df_filtered.columns[0]  # fallback
+            name_col = df_filtered.columns[0]
 
         df_filtered = df_filtered.reset_index(drop=True)
         options = df_filtered.index.tolist()
+
         labels = [
             f"{df_filtered.loc[i, name_col]} ({df_filtered.loc[i, 'borough']}, {df_filtered.loc[i, 'zipcode']})"
             for i in options
@@ -581,25 +565,23 @@ with right_col:
 
         selected_row = df_filtered.loc[selected_idx]
 
-        st.markdown("###  Selected Restaurant")
-        st.markdown(f"**Name:** {selected_row.get(name_col, 'N/A')}")
-        st.markdown(f"**Borough:** {selected_row.get('borough', 'N/A')}")
-        st.markdown(f"**ZIP:** {selected_row.get('zipcode', 'N/A')}")
-        st.markdown(f"**Cuisine:** {selected_row.get('cuisine_description', 'N/A')}")
+        st.markdown("### Selected Restaurant")
+        st.write(f"**Name:** {selected_row.get(name_col, 'N/A')}")
+        st.write(f"**Borough:** {selected_row.get('borough', 'N/A')}")
+        st.write(f"**ZIP:** {selected_row.get('zipcode', 'N/A')}")
+        st.write(f"**Cuisine:** {selected_row.get('cuisine_description', 'N/A')}")
 
-        # Show existing inspection info (if present)
-        st.markdown("###  Latest Inspection Info")
-        st.markdown(f"- **Score:** {selected_row.get('score', 'N/A')}")
-        st.markdown(f"- **Official Grade:** {selected_row.get('grade', 'N/A')}")
+        st.markdown("### Latest Inspection Info")
+        st.write(f"- **Score:** {selected_row.get('score', 'N/A')}")
+        st.write(f"- **Official Grade:** {selected_row.get('grade', 'N/A')}")
         if "inspection_date" in selected_row:
-            st.markdown(f"- **Inspection Date:** {selected_row.get('inspection_date')}")
+            st.write(f"- **Inspection Date:** {selected_row.get('inspection_date')}")
 
         st.markdown("---")
-        st.markdown("###  Model Prediction")
+        st.markdown("### Model Prediction")
 
         if st.button("Predict Inspection Grade"):
             try:
-                # Build model input
                 model_input = row_to_model_input(selected_row)
                 result = predict_restaurant_grade(model_input)
 
@@ -617,14 +599,14 @@ with right_col:
 
                 st.markdown("#### Confidence by Grade")
                 for g, p in formatted_probs:
-                    bar = "█" * int(p // 4)  # simple text bar
+                    bar = "█" * int(p // 4)
                     st.write(f"{g}: {p:.1f}% {bar}")
 
             except Exception as e:
-                st.error(f"Error making prediction: {e}")
+                st.error(f"Prediction error: {e}")
 
         st.markdown("---")
-        st.markdown("###  Neighborhood Snapshot (from NFH data)")
+        st.markdown("### Neighborhood Snapshot")
         nf_cols = [
             "nyc_poverty_rate",
             "median_income",
