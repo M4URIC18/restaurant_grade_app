@@ -354,49 +354,48 @@ with right_col:
     st.subheader(" Inspect & Predict")
 
     # -------------------------------------------------
-    # NEW: Detect nearest Google Nearby Restaurant clicked
+    # Ensure session states exist
     # -------------------------------------------------
-
-    # Ensure session list exists
     if "google_nearby" not in st.session_state:
         st.session_state["google_nearby"] = []
 
-    # Run ONLY if:
-    # - user clicked the map
-    # - AND we previously saved google_nearby results
+    # -------------------------------------------------
+    # Detect if user clicked near a Google Nearby marker
+    # -------------------------------------------------
     if (
-        "map_click" in st.session_state
-        and "google_nearby" in st.session_state
-        and len(st.session_state["google_nearby"]) > 0
+        "map_click" in st.session_state and
+        len(st.session_state["google_nearby"]) > 0
     ):
-        click_lat, click_lon = st.session_state["map_click"]
+        clat, clon = st.session_state["map_click"]
+
+        clicked_lat = clat
+        clicked_lon = clon
 
         closest = None
         min_dist = float("inf")
 
-        # Loop over saved nearby results
+        # Find nearest Google marker
         for place in st.session_state["google_nearby"]:
             plat = place["geometry"]["location"]["lat"]
             plon = place["geometry"]["location"]["lng"]
 
-            dist = (plat - click_lat)**2 + (plon - click_lon)**2
+            dist = (plat - clicked_lat)**2 + (plon - clicked_lon)**2
 
             if dist < min_dist:
                 min_dist = dist
                 closest = place
 
-        # If the closest marker is extremely close → treat it as clicked
+        # Only trigger if click was close enough to marker
         if closest and min_dist < 0.00005:
-
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
-            # Fetch Google full details
+            # Get full Google details
             details = google_place_details(closest["place_id"])
 
-            # Normalize → convert Google data to model input format
+            # Normalize for ML model
             norm = normalize_place_to_restaurant(details)
 
-            # Save it
+            # Save
             st.session_state["google_restaurant_nearby"] = norm
 
             # Display basic info
@@ -406,8 +405,7 @@ with right_col:
             st.write(f"**Borough:** {norm['borough']}")
             st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
-            # Predict grade
-            from src.predictor import predict_from_raw_restaurant
+            # Predict
             pred = predict_from_raw_restaurant(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
@@ -424,26 +422,22 @@ with right_col:
                 st.write(f"{g}: {p*100:.1f}%")
 
             st.markdown("---")
-
-            # Stop UI here so nothing else renders
             st.stop()
 
-
     # -------------------------------------------------
-    # If user clicked the map, reverse geocode + predict
-    # (ONLY run if nearby did NOT take over)
+    # If user clicked map but NOT a Google marker → predict location
     # -------------------------------------------------
     if "map_click" in st.session_state:
-        click_lat, click_lon = st.session_state["map_click"]
+        clat, clon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
 
-        # Reverse geocode ZIP + borough
+        # Reverse geocode
         import requests
         API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
         geo_url = (
-            "https://maps.googleapis.com/maps/api/geocode/json"
-            f"?latlng={click_lat},{click_lon}&key={API_KEY}"
+            f"https://maps.googleapis.com/maps/api/geocode/json"
+            f"?latlng={clat},{clon}&key={API_KEY}"
         )
         geo_data = requests.get(geo_url).json()
 
@@ -451,21 +445,22 @@ with right_col:
         borough = None
         address = None
 
-        if "results" in geo_data and geo_data["results"]:
-            address = geo_data["results"][0].get("formatted_address", "")
-            for comp in geo_data["results"][0]["address_components"]:
+        if geo_data.get("results"):
+            res = geo_data["results"][0]
+            address = res.get("formatted_address", "")
+            for comp in res["address_components"]:
                 if "postal_code" in comp["types"]:
                     zipcode = comp["long_name"]
-                if comp["long_name"].lower() in ["manhattan", "bronx", "brooklyn", "queens", "staten island"]:
+                if comp["long_name"].lower() in [
+                    "manhattan", "bronx", "brooklyn", "queens", "staten island"
+                ]:
                     borough = comp["long_name"].title()
 
         st.write(f"**Address:** {address}")
         st.write(f"**ZIP:** {zipcode}")
         st.write(f"**Borough:** {borough}")
 
-        # Predict assuming unknown cuisine
-        from src.predictor import predict_from_raw_restaurant
-
+        # Predict using unknown cuisine
         raw_restaurant = {
             "borough": borough,
             "zipcode": zipcode,
@@ -475,7 +470,6 @@ with right_col:
         }
 
         pred = predict_from_raw_restaurant(raw_restaurant)
-
         grade = pred["grade"]
         probs = pred["probabilities"]
         color = get_grade_color(grade)
@@ -493,7 +487,7 @@ with right_col:
         st.markdown("---")
 
     # -------------------------------------------------
-    # Google SEARCH restaurant panel (Step 12)
+    # Google Search result panel (Step 12)
     # -------------------------------------------------
     if st.session_state.get("google_restaurant"):
         g = st.session_state["google_restaurant"]
@@ -505,26 +499,20 @@ with right_col:
         st.write(f"**Borough:** {g['borough']}")
         st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
 
-        cuisine_input = st.text_input(
-            "Refine Cuisine (optional):",
-            value=g["cuisine_description"]
-        )
+        cuisine_input = st.text_input("Refine Cuisine:", value=g["cuisine_description"])
 
-        # Predict with refined cuisine
         if st.button("Predict Grade (Google Restaurant)"):
             refined = g.copy()
             refined["cuisine_description"] = cuisine_input
 
-            from src.predictor import predict_from_raw_restaurant
             pred = predict_from_raw_restaurant(refined)
-
             grade = pred["grade"]
             probs = pred["probabilities"]
             color = get_grade_color(grade)
 
             st.markdown("### ⭐ Prediction Result")
             st.markdown(
-                f"<span style='color:{color}; font-size:24px; font-weight:bold;'>{grade}</span>",
+                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
                 unsafe_allow_html=True
             )
 
@@ -534,88 +522,3 @@ with right_col:
 
         st.markdown("---")
         st.stop()
-
-    # -------------------------------------------------
-    # DATASET restaurant prediction panel
-    # -------------------------------------------------
-    if len(df_filtered) == 0:
-        st.info("Use the filters to select at least one restaurant.")
-    else:
-        # Let user select restaurant from table
-        if "dba" in df_filtered.columns:
-            name_col = "dba"
-        elif "DBA" in df_filtered.columns:
-            name_col = "DBA"
-        else:
-            name_col = df_filtered.columns[0]
-
-        df_filtered = df_filtered.reset_index(drop=True)
-        options = df_filtered.index.tolist()
-
-        labels = [
-            f"{df_filtered.loc[i, name_col]} ({df_filtered.loc[i, 'borough']}, {df_filtered.loc[i, 'zipcode']})"
-            for i in options
-        ]
-
-        selected_idx = st.selectbox(
-            "Choose a restaurant to analyze:",
-            options=options,
-            format_func=lambda i: labels[i]
-        )
-
-        selected_row = df_filtered.loc[selected_idx]
-
-        st.markdown("### Selected Restaurant")
-        st.write(f"**Name:** {selected_row.get(name_col, 'N/A')}")
-        st.write(f"**Borough:** {selected_row.get('borough', 'N/A')}")
-        st.write(f"**ZIP:** {selected_row.get('zipcode', 'N/A')}")
-        st.write(f"**Cuisine:** {selected_row.get('cuisine_description', 'N/A')}")
-
-        st.markdown("### Latest Inspection Info")
-        st.write(f"- **Score:** {selected_row.get('score', 'N/A')}")
-        st.write(f"- **Official Grade:** {selected_row.get('grade', 'N/A')}")
-        if "inspection_date" in selected_row:
-            st.write(f"- **Inspection Date:** {selected_row.get('inspection_date')}")
-
-        st.markdown("---")
-        st.markdown("### Model Prediction")
-
-        if st.button("Predict Inspection Grade"):
-            try:
-                model_input = row_to_model_input(selected_row)
-                result = predict_restaurant_grade(model_input)
-
-                predicted_grade = result["grade"]
-                probabilities = result["probabilities"]
-                formatted_probs = format_probabilities(probabilities)
-
-                color = get_grade_color(predicted_grade)
-
-                st.markdown(
-                    f"**Predicted Grade:** "
-                    f"<span style='color:{color}; font-size: 24px; font-weight: bold;'>{predicted_grade}</span>",
-                    unsafe_allow_html=True
-                )
-
-                st.markdown("#### Confidence by Grade")
-                for g, p in formatted_probs:
-                    bar = "█" * int(p // 4)
-                    st.write(f"{g}: {p:.1f}% {bar}")
-
-            except Exception as e:
-                st.error(f"Prediction error: {e}")
-
-        st.markdown("---")
-        st.markdown("### Neighborhood Snapshot")
-        nf_cols = [
-            "nyc_poverty_rate",
-            "median_income",
-            "perc_white",
-            "perc_black",
-            "perc_asian",
-            "perc_hispanic",
-            "indexscore"
-        ]
-        for col in nf_cols:
-            if col in selected_row:
-                st.write(f"**{col}:** {selected_row[col]}")
