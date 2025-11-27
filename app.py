@@ -353,65 +353,77 @@ with right_col:
     # -------------------------------------------------
     # NEW: Detect nearest Google Nearby Restaurant clicked
     # -------------------------------------------------
+
+    # Ensure session lists exist
     if "google_nearby" not in st.session_state:
         st.session_state["google_nearby"] = []
 
-    # Find the closest nearby marker to the click
-    clicked_lat = clat
-    clicked_lon = clon
+    # ❗ Do NOT run detection unless BOTH exist:
+    # - user clicked map (map_click exists)
+    # - google_nearby has results
+    if "map_click" in st.session_state and st.session_state["google_nearby"]:
 
-    closest = None
-    min_dist = float("inf")
+        clat, clon = st.session_state["map_click"]
 
-    for place in nearby:
-        plat = place["geometry"]["location"]["lat"]
-        plon = place["geometry"]["location"]["lng"]
+        clicked_lat = clat
+        clicked_lon = clon
 
-        dist = (plat - clicked_lat)**2 + (plon - clicked_lon)**2
+        closest = None
+        min_dist = float("inf")
 
-        if dist < min_dist:
-            min_dist = dist
-            closest = place
+        # Loop over saved nearby results
+        for place in st.session_state["google_nearby"]:
+            plat = place["geometry"]["location"]["lat"]
+            plon = place["geometry"]["location"]["lng"]
 
-    # If the closest marker is extremely close → treat it as clicked restaurant
-    if closest and min_dist < 0.00005:
-        st.markdown("## 🍽️ Google Nearby Restaurant Selected")
+            dist = (plat - clicked_lat)**2 + (plon - clicked_lon)**2
 
-        # fetch place details
-        details = google_place_details(closest["place_id"])
+            if dist < min_dist:
+                min_dist = dist
+                closest = place
 
-        # normalize for model
-        norm = normalize_place_to_restaurant(details)
+        # If the closest marker is extremely close → treat it as clicked
+        if closest and min_dist < 0.00005:
 
-        # save
-        st.session_state["google_restaurant_nearby"] = norm
+            st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
-        st.write(f"**Name:** {norm['name']}")
-        st.write(f"**Address:** {norm['address']}")
-        st.write(f"**ZIP:** {norm['zipcode']}")
-        st.write(f"**Borough:** {norm['borough']}")
-        st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
+            # Fetch Google full details
+            details = google_place_details(closest["place_id"])
 
-        # Predict
-        pred = predict_from_raw_restaurant(norm)
-        grade = pred["grade"]
-        probs = pred["probabilities"]
-        color = get_grade_color(grade)
+            # Normalize → convert Google data to model input format
+            norm = normalize_place_to_restaurant(details)
 
-        st.markdown(
-            f"### ⭐ Predicted Grade: "
-            f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-            unsafe_allow_html=True
-        )
+            # Save it
+            st.session_state["google_restaurant_nearby"] = norm
 
-        st.markdown("#### Confidence")
-        for g, p in probs.items():
-            st.write(f"{g}: {p*100:.1f}%")
+            # Display basic info
+            st.write(f"**Name:** {norm['name']}")
+            st.write(f"**Address:** {norm['address']}")
+            st.write(f"**ZIP:** {norm['zipcode']}")
+            st.write(f"**Borough:** {norm['borough']}")
+            st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
-        st.markdown("---")
+            # Predict grade
+            pred = predict_from_raw_restaurant(norm)
+            grade = pred["grade"]
+            probs = pred["probabilities"]
+            color = get_grade_color(grade)
 
-        # Stop further UI
-        st.stop()
+            st.markdown(
+                f"### ⭐ Predicted Grade: "
+                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown("#### Confidence")
+            for g, p in probs.items():
+                st.write(f"{g}: {p*100:.1f}%")
+
+            st.markdown("---")
+
+            # Stop UI here so nothing else renders
+            st.stop()
+
 
 
 
