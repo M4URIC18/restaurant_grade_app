@@ -364,7 +364,12 @@ with right_col:
     # ❗ Do NOT run detection unless BOTH exist:
     # - user clicked map (map_click exists)
     # - google_nearby has results
-    if "map_click" in st.session_state and st.session_state["google_nearby"]:
+    if (
+        "map_click" in st.session_state
+        and "google_nearby" in st.session_state
+        and len(st.session_state["google_nearby"]) > 0
+    ):
+
 
         clat, clon = st.session_state["map_click"]
 
