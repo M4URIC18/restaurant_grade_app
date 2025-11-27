@@ -353,6 +353,9 @@ with left_col:
 with right_col:
     st.subheader(" Inspect & Predict")
 
+    # FIX: import predictor function (required for all predictions)
+    from src.predictor import predict_from_raw_restaurant
+
     # -------------------------------------------------
     # Ensure session states exist
     # -------------------------------------------------
