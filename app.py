@@ -256,6 +256,9 @@ with left_col:
             nearby_query = f"restaurants near {clat},{clon}"
             nearby = google_text_search(nearby_query)
 
+            # SAVE into session
+            st.session_state["google_nearby"] = nearby
+
             for place in nearby:
                 plat = place["geometry"]["location"]["lat"]
                 plon = place["geometry"]["location"]["lng"]
