@@ -142,38 +142,40 @@ DEMO_COLS = [
 def _demo_lookup(zipcode, borough):
     """
     Safely look up demographic info by zipcode.
-    If zipcode is None or missing, return global averages.
+    If zipcode is missing or doesn't exist in the demographics table,
+    return global averages.
     """
 
-    global df_demo, DEMO_COLS
+    global _df_demo, DEMO_COLS
 
-    # If ZIP is missing OR df_demo does not contain this column → fallback
+    df = _df_demo  # the actual demographics dataframe
+
+    # If demographics table is not loaded → return zeros
+    if df is None or df.empty:
+        return {col: 0 for col in DEMO_COLS}
+
+    # Try to convert zipcode to int
+    try:
+        zipcode = int(zipcode)
+    except:
+        zipcode = None
+
+    # If zipcode missing OR column missing → fallback
     if (
         zipcode is None
-        or "zipcode" not in df_demo.columns
-        or df_demo.empty
+        or "zipcode" not in df.columns
     ):
-        # return global averages
-        return df_demo[DEMO_COLS].mean().to_dict()
+        return df[DEMO_COLS].mean().to_dict()
 
-    # Filter by zipcode
-    df_zip = df_demo[df_demo["zipcode"] == zipcode]
+    # Filter rows with matching zipcode
+    df_zip = df[df["zipcode"] == zipcode]
 
     if not df_zip.empty:
         return df_zip[DEMO_COLS].iloc[0].to_dict()
 
-    # fallback
-    return df_demo[DEMO_COLS].mean().to_dict()
-
-
-    # Borough fallback
-    if borough:
-        df_b = df[df["borough"].str.lower() == str(borough).lower()]
-        if not df_b.empty:
-            return df_b[DEMO_COLS].mean().to_dict()
-
-    # Global fallback
+    # Final fallback → global averages
     return df[DEMO_COLS].mean().to_dict()
+
 
 
 def build_feature_vector_from_raw(raw):
