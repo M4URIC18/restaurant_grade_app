@@ -385,55 +385,82 @@ with left_col:
 with right_col:
     st.subheader(" Inspect & Predict")
 
-    # FIX: import predictor function (required for all predictions)
     from src.predictor import predict_from_raw_restaurant
+    import requests
 
     # -------------------------------------------------
-    # Ensure session states exist
+    # PRIORITY 1 — Google Search result (HIGHEST)
     # -------------------------------------------------
-    if "google_nearby" not in st.session_state:
-        st.session_state["google_nearby"] = []
+    if st.session_state.get("google_restaurant"):
+        g = st.session_state["google_restaurant"]
+
+        st.markdown("## 🔍 Google Restaurant Selected")
+        st.write(f"**Name:** {g['name']}")
+        st.write(f"**Address:** {g['address']}")
+        st.write(f"**ZIP:** {g['zipcode']}")
+        st.write(f"**Borough:** {g['borough']}")
+        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
+
+        cuisine_input = st.text_input(
+            "Refine Cuisine:", 
+            value=g["cuisine_description"]
+        )
+
+        if st.button("Predict Grade (Google Restaurant)"):
+            refined = g.copy()
+            refined["cuisine_description"] = cuisine_input
+
+            pred = predict_from_raw_restaurant(refined)
+            grade = pred["grade"]
+            probs = pred["probabilities"]
+            color = get_grade_color(grade)
+
+            st.markdown("### ⭐ Prediction Result")
+            st.markdown(
+                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown("#### Confidence")
+            for h, p in probs.items():
+                st.write(f"{h}: {p*100:.1f}%")
+
+        st.markdown("---")
+        st.stop()      # IMPORTANT: Do not show ANYTHING below this point
+
 
     # -------------------------------------------------
-    # Detect if user clicked near a Google Nearby marker
+    # PRIORITY 2 — Google Nearby marker selected
     # -------------------------------------------------
     if (
         "map_click" in st.session_state and
-        len(st.session_state["google_nearby"]) > 0
+        st.session_state.get("google_nearby")
     ):
         clat, clon = st.session_state["map_click"]
 
-        clicked_lat = clat
-        clicked_lon = clon
-
+        # Find the closest Google Nearby marker
         closest = None
         min_dist = float("inf")
 
-        # Find nearest Google marker
         for place in st.session_state["google_nearby"]:
             plat = place["geometry"]["location"]["lat"]
             plon = place["geometry"]["location"]["lng"]
-
-            dist = (plat - clicked_lat)**2 + (plon - clicked_lon)**2
+            dist = (plat - clat)**2 + (plon - clon)**2
 
             if dist < min_dist:
                 min_dist = dist
                 closest = place
 
-        # Only trigger if click was close enough to marker
+        # Only treat as a “nearby click” if the click was VERY close
         if closest and min_dist < 0.00005:
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
-            # Get full Google details
             details = google_place_details(closest["place_id"])
-
-            # Normalize for ML model
             norm = normalize_place_to_restaurant(details)
 
-            # Save
             st.session_state["google_restaurant_nearby"] = norm
 
-            # Display basic info
+            # Display
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
             st.write(f"**ZIP:** {norm['zipcode']}")
@@ -457,10 +484,11 @@ with right_col:
                 st.write(f"{g}: {p*100:.1f}%")
 
             st.markdown("---")
-            st.stop()
+            st.stop()     # DO NOT SHOW MAP CLICK PREDICTION BELOW THIS
+
 
     # -------------------------------------------------
-    # If user clicked map but NOT a Google marker → predict location
+    # PRIORITY 3 — Map click prediction (NO Google Search / NO Google Nearby)
     # -------------------------------------------------
     if "map_click" in st.session_state:
         clat, clon = st.session_state["map_click"]
@@ -468,7 +496,6 @@ with right_col:
         st.markdown("## 📍 Map Click Detected")
 
         # Reverse geocode
-        import requests
         API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
         geo_url = (
             f"https://maps.googleapis.com/maps/api/geocode/json"
@@ -495,7 +522,6 @@ with right_col:
         st.write(f"**ZIP:** {zipcode}")
         st.write(f"**Borough:** {borough}")
 
-        # Predict using unknown cuisine
         raw_restaurant = {
             "borough": borough,
             "zipcode": zipcode,
@@ -520,40 +546,13 @@ with right_col:
             st.write(f"{g}: {p*100:.1f}%")
 
         st.markdown("---")
-
-    # -------------------------------------------------
-    # Google Search result panel (Step 12)
-    # -------------------------------------------------
-    if st.session_state.get("google_restaurant"):
-        g = st.session_state["google_restaurant"]
-
-        st.markdown("## 🔍 Google Restaurant Selected")
-        st.write(f"**Name:** {g['name']}")
-        st.write(f"**Address:** {g['address']}")
-        st.write(f"**ZIP:** {g['zipcode']}")
-        st.write(f"**Borough:** {g['borough']}")
-        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
-
-        cuisine_input = st.text_input("Refine Cuisine:", value=g["cuisine_description"])
-
-        if st.button("Predict Grade (Google Restaurant)"):
-            refined = g.copy()
-            refined["cuisine_description"] = cuisine_input
-
-            pred = predict_from_raw_restaurant(refined)
-            grade = pred["grade"]
-            probs = pred["probabilities"]
-            color = get_grade_color(grade)
-
-            st.markdown("### ⭐ Prediction Result")
-            st.markdown(
-                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True
-            )
-
-            st.markdown("#### Confidence")
-            for h, p in probs.items():
-                st.write(f"{h}: {p*100:.1f}%")
-
-        st.markdown("---")
         st.stop()
+
+
+    # -------------------------------------------------
+    # PRIORITY 4 — Default (nothing selected)
+    # -------------------------------------------------
+    st.info("Select a restaurant or click the map to begin.")
+
+
+
