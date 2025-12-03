@@ -17,20 +17,25 @@ def google_text_search(query):
 
     encoded_query = urllib.parse.quote(query)
 
+    # default NYC center as bias
+    nyc_center = "40.7128,-74.0060"
+
     url = (
         "https://maps.googleapis.com/maps/api/place/textsearch/json"
-        f"?query={encoded_query}&key={API_KEY}"
+        f"?query={encoded_query}"
+        f"&location={nyc_center}"
+        f"&radius=30000"        # 30 km radius for NYC
+        f"&region=us"
+        f"&key={API_KEY}"
     )
-
-    print("DEBUG GOOGLE URL:", url)
 
     resp = requests.get(url).json()
 
-    # Catch API errors clearly
     if resp.get("status") not in ["OK", "ZERO_RESULTS"]:
         return []
 
     return resp.get("results", [])
+
 
 
 # -------------------------------------------------

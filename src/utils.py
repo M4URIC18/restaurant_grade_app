@@ -141,24 +141,30 @@ DEMO_COLS = [
 
 def _demo_lookup(zipcode, borough):
     """
-    Returns demographic features using:
-    1) ZIP match
-    2) borough average
-    3) global average
+    Safely look up demographic info by zipcode.
+    If zipcode is None or missing, return global averages.
     """
 
-    df = _df_demo.copy()
+    global df_demo, DEMO_COLS
 
-    # ZIP search
-    try:
-        zipcode = int(zipcode)
-    except:
-        zipcode = None
+    # If ZIP is missing OR df_demo does not contain this column → fallback
+    if (
+        zipcode is None
+        or "zipcode" not in df_demo.columns
+        or df_demo.empty
+    ):
+        # return global averages
+        return df_demo[DEMO_COLS].mean().to_dict()
 
-    if zipcode is not None:
-        df_zip = df[df["zipcode"] == zipcode]
-        if not df_zip.empty:
-            return df_zip[DEMO_COLS].iloc[0].to_dict()
+    # Filter by zipcode
+    df_zip = df_demo[df_demo["zipcode"] == zipcode]
+
+    if not df_zip.empty:
+        return df_zip[DEMO_COLS].iloc[0].to_dict()
+
+    # fallback
+    return df_demo[DEMO_COLS].mean().to_dict()
+
 
     # Borough fallback
     if borough:

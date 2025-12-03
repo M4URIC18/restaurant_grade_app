@@ -5,43 +5,6 @@ import os
 import requests
 
 
-def debug_google():
-    st.write("---- GOOGLE DEBUG START ----")
-
-    # Check secrets
-    secret_key = st.secrets.get("GOOGLE_MAPS_API_KEY")
-    st.write("🔑 Secret Key Present?", bool(secret_key))
-
-    # Check OS env
-    env_key = os.environ.get("GOOGLE_MAPS_API_KEY")
-    st.write("🔑 Environment Key Present?", bool(env_key))
-
-    # If no key → stop early
-    if not env_key:
-        st.error("❌ No GOOGLE_MAPS_API_KEY found in OS ENV. Google calls cannot work.")
-        return
-
-    # Raw request
-    test_url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query=starbucks&key={env_key}"
-    try:
-        resp = requests.get(test_url).json()
-        st.write("🔍 RAW GOOGLE RESPONSE:", resp)
-    except Exception as e:
-        st.error(f"❌ Exception during Google request: {e}")
-
-    st.write("---- GOOGLE DEBUG END ----")
-
-
-encoded = requests.utils.quote("shake shack")
-st.write("Encoded Query:", encoded)
-
-test_url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={encoded}&region=us&key={os.environ.get('GOOGLE_MAPS_API_KEY')}"
-r = requests.get(test_url).json()
-st.write("Direct Test:", r)
-
-
-
-
 from streamlit_folium import st_folium
 
 from src.data_loader import get_data
