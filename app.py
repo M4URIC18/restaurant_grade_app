@@ -267,18 +267,19 @@ with left_col:
 
 
         # -------------------------------------------------
-        # Google Nearby Restaurants (Step 13)  ✅ FIXED
+        # Google Nearby Restaurants (Step 13 – FIXED)
         # -------------------------------------------------
         nearby = []
         if "map_click" in st.session_state:
             clat, clon = st.session_state["map_click"]
 
-            from src.places import google_nearby_restaurants
+            from src.places import google_text_search
 
-            # Use the dedicated Nearby Search endpoint  ✅
-            nearby = google_nearby_restaurants(clat, clon)
+            # Search for "restaurants near lat,lon"
+            nearby_query = f"restaurants near {clat},{clon}"
+            nearby = google_text_search(nearby_query)
 
-            # Save results for right column prediction logic
+            # Save in session
             st.session_state["google_nearby"] = nearby
 
             for place in nearby:
@@ -289,23 +290,17 @@ with left_col:
                 popup_html = f"""
                 <div style='font-size:14px;'>
                     <b>{name}</b><br>
-                    <i>(Google Nearby Restaurant)</i>
+                    <i>Google Nearby Restaurant</i>
                 </div>
                 """
 
-                marker = folium.CircleMarker(
+                # USE Marker instead of CircleMarker  ⬇⬇⬇⬇
+                folium.Marker(
                     location=[plat, plon],
-                    radius=5,
                     popup=folium.Popup(popup_html, max_width=250),
-                    color="#1e90ff",
-                    fill=True,
-                    fill_opacity=0.9
-                )
+                    icon=folium.Icon(color="blue", icon="cutlery")
+                ).add_to(m)
 
-                marker.add_to(m)
-
-                # Attach place_id to marker
-                marker.place_id = place.get("place_id")
 
 
         # -------------------------------------------------
