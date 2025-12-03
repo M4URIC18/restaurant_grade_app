@@ -276,10 +276,11 @@ with left_col:
             from src.places import google_nearby_restaurants
 
             # Use the dedicated Nearby Search endpoint  ✅
-            nearby = google_nearby_restaurants(clat, clon)
-
+            
+            # 1. RUN Google nearby search (inside a spinner)
             with st.spinner("🔍 Loading nearby restaurants…"):
-                nearby = google_text_search(nearby_query)
+                nearby = google_nearby_restaurants(clat, clon)
+
 
             # Save results for right column prediction logic
             st.session_state["google_nearby"] = nearby
