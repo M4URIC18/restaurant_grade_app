@@ -16,12 +16,13 @@ def google_text_search(query):
         return []
 
     encoded_query = urllib.parse.quote(query)
+
     url = (
         "https://maps.googleapis.com/maps/api/place/textsearch/json"
         f"?query={encoded_query}&key={API_KEY}"
     )
 
-
+    print("DEBUG GOOGLE URL:", url)
 
     resp = requests.get(url).json()
 
