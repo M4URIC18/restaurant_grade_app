@@ -278,6 +278,9 @@ with left_col:
             # Use the dedicated Nearby Search endpoint  ✅
             nearby = google_nearby_restaurants(clat, clon)
 
+            with st.spinner("🔍 Loading nearby restaurants…"):
+                nearby = google_text_search(nearby_query)
+
             # Save results for right column prediction logic
             st.session_state["google_nearby"] = nearby
 
@@ -302,10 +305,12 @@ with left_col:
                     fill_opacity=0.9
                 )
 
-                marker.add_to(m)
+                # NEW → Show name when hovering  
+                folium.Tooltip(name).add_to(marker)
 
-                # Attach place_id to marker
+                marker.add_to(m)
                 marker.place_id = place.get("place_id")
+
 
 
         # -------------------------------------------------
