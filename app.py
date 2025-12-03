@@ -3,6 +3,18 @@ import pandas as pd
 import folium
 import os
 
+
+def debug_google():
+    key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    if not key:
+        st.error("API KEY NOT LOADED into OS ENV!")
+        return
+
+    url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query=starbucks&key={key}"
+    resp = requests.get(url).json()
+    st.write("🔍 RAW GOOGLE TEST:", resp)
+
+
 from streamlit_folium import st_folium
 
 from src.data_loader import get_data
@@ -50,6 +62,12 @@ st.set_page_config(
 )
 
 st.title("CleanKitchen NYC")
+
+debug_google()
+st.write("🔑 Secret key exists:", bool(st.secrets.get("GOOGLE_MAPS_API_KEY")))
+st.write("🔑 OS env key exists:", bool(os.environ.get("GOOGLE_MAPS_API_KEY")))
+
+
 st.markdown(
     "Explore NYC restaurant inspections, neighborhood demographics, "
     "and **AI-powered grade predictions** based on real inspection data."
