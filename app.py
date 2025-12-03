@@ -2,17 +2,35 @@ import streamlit as st
 import pandas as pd
 import folium
 import os
+import requests
 
 
 def debug_google():
-    key = os.environ.get("GOOGLE_MAPS_API_KEY")
-    if not key:
-        st.error("API KEY NOT LOADED into OS ENV!")
+    st.write("---- GOOGLE DEBUG START ----")
+
+    # Check secrets
+    secret_key = st.secrets.get("GOOGLE_MAPS_API_KEY")
+    st.write("🔑 Secret Key Present?", bool(secret_key))
+
+    # Check OS env
+    env_key = os.environ.get("GOOGLE_MAPS_API_KEY")
+    st.write("🔑 Environment Key Present?", bool(env_key))
+
+    # If no key → stop early
+    if not env_key:
+        st.error("❌ No GOOGLE_MAPS_API_KEY found in OS ENV. Google calls cannot work.")
         return
 
-    url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query=starbucks&key={key}"
-    resp = requests.get(url).json()
-    st.write("🔍 RAW GOOGLE TEST:", resp)
+    # Raw request
+    test_url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query=starbucks&key={env_key}"
+    try:
+        resp = requests.get(test_url).json()
+        st.write("🔍 RAW GOOGLE RESPONSE:", resp)
+    except Exception as e:
+        st.error(f"❌ Exception during Google request: {e}")
+
+    st.write("---- GOOGLE DEBUG END ----")
+
 
 
 from streamlit_folium import st_folium
