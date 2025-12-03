@@ -53,7 +53,6 @@ st.set_page_config(
 
 st.title("CleanKitchen NYC")
 
-debug_google()
 st.write("🔑 Secret key exists:", bool(st.secrets.get("GOOGLE_MAPS_API_KEY")))
 st.write("🔑 OS env key exists:", bool(os.environ.get("GOOGLE_MAPS_API_KEY")))
 
