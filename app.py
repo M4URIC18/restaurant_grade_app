@@ -134,43 +134,56 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
 # -------------------------------------------------
-# Google Search (Step 12 – unified)
+# Google Search (Step 12 – unified & FIXED)
 # -------------------------------------------------
-st.subheader(" Search Any Restaurant (Google Places)")
+st.subheader("🔍 Search Any Restaurant (Google Places)")
 
 google_query = st.text_input(
     "Search restaurant by name:",
     placeholder="e.g. Shake Shack, Katz Deli, Chipotle…"
 )
 
-# Session slot
+# Prepare session slots
+if "google_search_results" not in st.session_state:
+    st.session_state["google_search_results"] = []
+
 if "google_restaurant" not in st.session_state:
     st.session_state["google_restaurant"] = None
 
-if google_query:
 
-    # 1. Text search
+# -------------------------------------------------
+# 1. Perform Google Text Search
+# -------------------------------------------------
+if google_query:
     places = google_text_search(google_query)
+
+    # Save to session (fixes refresh issues)
+    st.session_state["google_search_results"] = places
 
     if not places:
         st.warning("No matching restaurants found.")
     else:
-        # Let user choose the correct result
         names = [p["name"] for p in places]
         choice = st.selectbox("Select restaurant:", names)
 
         selected = next(p for p in places if p["name"] == choice)
 
-        # 2. Get full details
+        # -------------------------------------------------
+        # 2. Get full Google Place Details
+        # -------------------------------------------------
         details = google_place_details(selected["place_id"])
 
-        # 3. Normalize → (name, address, lat, lon, borough, zipcode, cuisine,...)
+        # -------------------------------------------------
+        # 3. Normalize into a standard restaurant object
+        # -------------------------------------------------
         norm = normalize_place_to_restaurant(details)
 
-        # Store normalized record
+        # Store normalized (so map section can draw marker)
         st.session_state["google_restaurant"] = norm
 
+        # -------------------------------------------------
         # 4. Predict grade
+        # -------------------------------------------------
         from src.predictor import predict_from_raw_restaurant
         pred = predict_from_raw_restaurant(norm)
 
@@ -178,7 +191,9 @@ if google_query:
         probs = pred["probabilities"]
         color = get_grade_color(grade)
 
-        # 5. Display basic info
+        # -------------------------------------------------
+        # 5. Show result panel
+        # -------------------------------------------------
         st.markdown("### ⭐ Google Search Prediction")
         st.write(f"**Name:** {norm['name']}")
         st.write(f"**Address:** {norm['address']}")
@@ -197,6 +212,7 @@ if google_query:
             st.write(f"{g}: {p*100:.1f}%")
 
         st.markdown("---")
+
 
 
 
@@ -251,19 +267,18 @@ with left_col:
 
 
         # -------------------------------------------------
-        # Google Nearby Restaurants (Step 13)
+        # Google Nearby Restaurants (Step 13)  ✅ FIXED
         # -------------------------------------------------
         nearby = []
         if "map_click" in st.session_state:
             clat, clon = st.session_state["map_click"]
 
-            from src.places import google_text_search
+            from src.places import google_nearby_restaurants
 
-            # Search for "restaurants near lat,lon"
-            nearby_query = f"restaurants near {clat},{clon}"
-            nearby = google_text_search(nearby_query)
+            # Use the dedicated Nearby Search endpoint  ✅
+            nearby = google_nearby_restaurants(clat, clon)
 
-            # SAVE into session
+            # Save results for right column prediction logic
             st.session_state["google_nearby"] = nearby
 
             for place in nearby:
@@ -289,8 +304,9 @@ with left_col:
 
                 marker.add_to(m)
 
-                # Attach place_id to marker object for detection later
+                # Attach place_id to marker
                 marker.place_id = place.get("place_id")
+
 
 
 
