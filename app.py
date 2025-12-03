@@ -211,6 +211,13 @@ if google_query:
         for g, p in probs.items():
             st.write(f"{g}: {p*100:.1f}%")
 
+
+        # Clear Google Search result
+        if st.button(" Clear Google Search"):
+            st.session_state["google_restaurant"] = None
+            st.session_state["google_restaurant_nearby"] = None
+            st.experimental_rerun()    
+
         st.markdown("---")
 
 
