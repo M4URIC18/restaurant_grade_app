@@ -214,8 +214,7 @@ if google_query:
 
         # Clear Google Search result
         if st.button(" Clear Google Search"):
-            st.session_state["google_restaurant"] = None
-            st.session_state["google_restaurant_nearby"] = None
+            clear_all_selections()
             st.experimental_rerun()    
 
         st.markdown("---")
@@ -388,6 +387,13 @@ with left_col:
     st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
 
 
+def clear_all_selections():
+    st.session_state["google_restaurant"] = None
+    st.session_state["google_restaurant_nearby"] = None
+    st.session_state["map_click"] = None
+    st.session_state["google_nearby"] = []
+
+
 
 with right_col:
     st.subheader(" Inspect & Predict")
@@ -395,45 +401,7 @@ with right_col:
     from src.predictor import predict_from_raw_restaurant
     import requests
 
-    # -------------------------------------------------
-    # PRIORITY 1 — Google Search result (HIGHEST)
-    # -------------------------------------------------
-    if st.session_state.get("google_restaurant"):
-        g = st.session_state["google_restaurant"]
-
-        st.markdown("## 🔍 Google Restaurant Selected")
-        st.write(f"**Name:** {g['name']}")
-        st.write(f"**Address:** {g['address']}")
-        st.write(f"**ZIP:** {g['zipcode']}")
-        st.write(f"**Borough:** {g['borough']}")
-        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
-
-        cuisine_input = st.text_input(
-            "Refine Cuisine:", 
-            value=g["cuisine_description"]
-        )
-
-        if st.button("Predict Grade (Google Restaurant)"):
-            refined = g.copy()
-            refined["cuisine_description"] = cuisine_input
-
-            pred = predict_from_raw_restaurant(refined)
-            grade = pred["grade"]
-            probs = pred["probabilities"]
-            color = get_grade_color(grade)
-
-            st.markdown("### ⭐ Prediction Result")
-            st.markdown(
-                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True
-            )
-
-            st.markdown("#### Confidence")
-            for h, p in probs.items():
-                st.write(f"{h}: {p*100:.1f}%")
-
-        st.markdown("---")
-        st.stop()      # IMPORTANT: Do not show ANYTHING below this point
+    
 
 
     # -------------------------------------------------
@@ -554,6 +522,47 @@ with right_col:
 
         st.markdown("---")
         st.stop()
+
+
+    # -------------------------------------------------
+    # PRIORITY 1 — Google Search result (HIGHEST)
+    # -------------------------------------------------
+    if st.session_state.get("google_restaurant"):
+        g = st.session_state["google_restaurant"]
+
+        st.markdown("## 🔍 Google Restaurant Selected")
+        st.write(f"**Name:** {g['name']}")
+        st.write(f"**Address:** {g['address']}")
+        st.write(f"**ZIP:** {g['zipcode']}")
+        st.write(f"**Borough:** {g['borough']}")
+        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
+
+        cuisine_input = st.text_input(
+            "Refine Cuisine:", 
+            value=g["cuisine_description"]
+        )
+
+        if st.button("Predict Grade (Google Restaurant)"):
+            refined = g.copy()
+            refined["cuisine_description"] = cuisine_input
+
+            pred = predict_from_raw_restaurant(refined)
+            grade = pred["grade"]
+            probs = pred["probabilities"]
+            color = get_grade_color(grade)
+
+            st.markdown("### ⭐ Prediction Result")
+            st.markdown(
+                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown("#### Confidence")
+            for h, p in probs.items():
+                st.write(f"{h}: {p*100:.1f}%")
+
+        st.markdown("---")
+        st.stop()      # IMPORTANT: Do not show ANYTHING below this point    
 
 
     # -------------------------------------------------
