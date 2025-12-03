@@ -308,32 +308,35 @@ with left_col:
                 marker.place_id = place.get("place_id")
 
 
-
-
-
         # -------------------------------------------------
-        # Google restaurant marker (Step 12)
+        # Google restaurant marker (Step 12 – FIXED)
         # -------------------------------------------------
         if st.session_state.get("google_restaurant"):
             g = st.session_state["google_restaurant"]
 
-            popup_html = f"""
-            <div style="font-size:14px;">
-                <b>{g['name']}</b><br>
-                {g['address']}<br>
-                <span style='color:blue;'>Google Search Result</span>
-            </div>
-            """
+            # Robust latitude/longitude handling
+            glat = g.get("latitude") or g.get("lat")
+            glon = g.get("longitude") or g.get("lon") or g.get("lng")
 
-            folium.Marker(
-                location=[g["latitude"], g["longitude"]],
-                popup=folium.Popup(popup_html, max_width=300),
-                icon=folium.Icon(color="blue", icon="info-sign")
-            ).add_to(m)
+            if glat and glon:
+                popup_html = f"""
+                <div style="font-size:14px;">
+                    <b>{g.get('name', 'Unknown')}</b><br>
+                    {g.get('address', '')}<br>
+                    <span style='color:blue;'>Google Search Result</span>
+                </div>
+                """
 
-            # recenter map
-            m.location = [g["latitude"], g["longitude"]]
-            m.zoom_start = 15
+                folium.Marker(
+                    location=[glat, glon],
+                    popup=folium.Popup(popup_html, max_width=300),
+                    icon=folium.Icon(color="blue", icon="info-sign")
+                ).add_to(m)
+
+                # recenter map after adding marker
+                m.location = [glat, glon]
+                m.zoom_start = 15
+
 
 
         # -------------------------------------------------
