@@ -32,6 +32,15 @@ def debug_google():
     st.write("---- GOOGLE DEBUG END ----")
 
 
+encoded = requests.utils.quote("shake shack")
+st.write("Encoded Query:", encoded)
+
+test_url = f"https://maps.googleapis.com/maps/api/place/textsearch/json?query={encoded}&region=us&key={os.environ.get('GOOGLE_MAPS_API_KEY')}"
+r = requests.get(test_url).json()
+st.write("Direct Test:", r)
+
+
+
 
 from streamlit_folium import st_folium
 
