@@ -1,5 +1,6 @@
 import requests
 import os
+import urllib.parse
 
 # Dynamically load the API key each time
 def get_api_key():
@@ -14,10 +15,13 @@ def google_text_search(query):
     if not API_KEY:
         return []
 
+    encoded_query = urllib.parse.quote(query)
     url = (
         "https://maps.googleapis.com/maps/api/place/textsearch/json"
-        f"?query={query}&key={API_KEY}"
+        f"?query={encoded_query}&key={API_KEY}"
     )
+
+
 
     resp = requests.get(url).json()
 
