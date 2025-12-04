@@ -384,6 +384,9 @@ with left_col:
             click_lon = map_data["last_clicked"]["lng"]
 
             st.session_state["map_click"] = (click_lat, click_lon)
+            # Clear Google Search result when user interacts with map
+            st.session_state["google_restaurant"] = None
+
             st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
 
     # -------------------------------------------------
