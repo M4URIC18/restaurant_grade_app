@@ -448,7 +448,7 @@ with right_col:
 
         # Clear Google Search
         if st.button("❌ Clear Search"):
-            clear_all()
+            clear_all_selections()
 
         st.markdown("---")
         st.stop()   # STOP EVERYTHING BELOW
