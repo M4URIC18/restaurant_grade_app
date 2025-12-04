@@ -480,17 +480,25 @@ with right_col:
                 closest = place
 
         if closest and min_dist < 0.00005:
+            # 🚨 CLEAR GOOGLE SEARCH SO NEARBY CLICK WINS
+            st.session_state["google_restaurant"] = None
+
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
             details = google_place_details(closest["place_id"])
             norm = normalize_place_to_restaurant(details)
 
+            # Store nearby selection
+            st.session_state["google_restaurant_nearby"] = norm
+
+            # Display info
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
             st.write(f"**ZIP:** {norm['zipcode']}")
             st.write(f"**Borough:** {norm['borough']}")
             st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
+            # Predict
             pred = predict_from_raw_restaurant(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
