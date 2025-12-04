@@ -276,8 +276,12 @@ with left_col:
         # Google Nearby Restaurants (Step 13)  ✅ FIXED
         # -------------------------------------------------
         nearby = []
-        if "map_click" in st.session_state:
+        if (
+            "map_click" in st.session_state and
+            st.session_state["map_click"] is not None
+        ):
             clat, clon = st.session_state["map_click"]
+
 
             from src.places import google_nearby_restaurants
 
