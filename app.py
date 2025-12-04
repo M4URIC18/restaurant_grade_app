@@ -28,6 +28,17 @@ from src.places import (
 
 
 # -------------------------------------------------
+# Helper: clear everything
+# -------------------------------------------------
+def clear_all_selections():
+    st.session_state["google_restaurant"] = None
+    st.session_state["google_restaurant_nearby"] = None
+    st.session_state["map_click"] = None
+    st.session_state["google_nearby"] = []
+    st.rerun()
+
+
+# -------------------------------------------------
 # Google API key (from Streamlit secrets)
 # -------------------------------------------------
 GOOGLE_API_KEY = st.secrets.get("GOOGLE_MAPS_API_KEY")
@@ -213,9 +224,8 @@ if google_query:
 
 
         # Clear Google Search result
-        if st.button(" Clear Google Search"):
-            clear_all_selections()
-            st.experimental_rerun()    
+        if st.button("Clear Google Search"):
+            clear_all_selections()    
 
         st.markdown("---")
 
@@ -391,13 +401,6 @@ with left_col:
     st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
 
 
-def clear_all_selections():
-    st.session_state["google_restaurant"] = None
-    st.session_state["google_restaurant_nearby"] = None
-    st.session_state["map_click"] = None
-    st.session_state["google_nearby"] = []
-
-
 
 with right_col:
     st.subheader(" Inspect & Predict")
@@ -405,15 +408,6 @@ with right_col:
     from src.predictor import predict_from_raw_restaurant
     import requests
 
-    # -------------------------------------------------
-    # Helper: clear everything
-    # -------------------------------------------------
-    def clear_all():
-        st.session_state["google_restaurant"] = None
-        st.session_state["google_restaurant_nearby"] = None
-        st.session_state["map_click"] = None
-        st.session_state["google_nearby"] = []
-        st.rerun()
 
     # =================================================
     # PRIORITY 1 — Google Search result (HIGHEST)
