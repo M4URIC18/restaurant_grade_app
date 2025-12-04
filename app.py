@@ -409,7 +409,7 @@ with right_col:
         st.session_state["google_restaurant_nearby"] = None
         st.session_state["map_click"] = None
         st.session_state["google_nearby"] = []
-        st.experimental_rerun()
+        st.rerun()
 
     # =================================================
     # PRIORITY 1 — Google Search result (HIGHEST)
@@ -513,8 +513,12 @@ with right_col:
     # =================================================
     # PRIORITY 3 — Map click prediction
     # =================================================
-    if "map_click" in st.session_state:
+    if (
+        "map_click" in st.session_state and
+        st.session_state["map_click"] is not None
+    ):
         clat, clon = st.session_state["map_click"]
+
 
         st.markdown("## 📍 Map Click Detected")
 
