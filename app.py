@@ -401,19 +401,71 @@ with right_col:
     from src.predictor import predict_from_raw_restaurant
     import requests
 
-    
+    # -------------------------------------------------
+    # Helper: clear everything
+    # -------------------------------------------------
+    def clear_all():
+        st.session_state["google_restaurant"] = None
+        st.session_state["google_restaurant_nearby"] = None
+        st.session_state["map_click"] = None
+        st.session_state["google_nearby"] = []
+        st.experimental_rerun()
+
+    # =================================================
+    # PRIORITY 1 — Google Search result (HIGHEST)
+    # =================================================
+    if st.session_state.get("google_restaurant"):
+        g = st.session_state["google_restaurant"]
+
+        st.markdown("## 🔍 Google Restaurant Selected")
+        st.write(f"**Name:** {g['name']}")
+        st.write(f"**Address:** {g['address']}")
+        st.write(f"**ZIP:** {g['zipcode']}")
+        st.write(f"**Borough:** {g['borough']}")
+        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
+
+        cuisine_input = st.text_input(
+            "Refine Cuisine:",
+            value=g["cuisine_description"]
+        )
+
+        if st.button("Predict Grade (Google Restaurant)"):
+            refined = g.copy()
+            refined["cuisine_description"] = cuisine_input
+
+            pred = predict_from_raw_restaurant(refined)
+            grade = pred["grade"]
+            probs = pred["probabilities"]
+            color = get_grade_color(grade)
+
+            st.markdown("### ⭐ Prediction Result")
+            st.markdown(
+                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+                unsafe_allow_html=True
+            )
+
+            st.markdown("#### Confidence")
+            for h, p in probs.items():
+                st.write(f"{h}: {p*100:.1f}%")
+
+        # Clear Google Search
+        if st.button("❌ Clear Search"):
+            clear_all()
+
+        st.markdown("---")
+        st.stop()   # STOP EVERYTHING BELOW
 
 
-    # -------------------------------------------------
-    # PRIORITY 2 — Google Nearby marker selected
-    # -------------------------------------------------
+
+    # =================================================
+    # PRIORITY 2 — Google Nearby restaurant click
+    # =================================================
     if (
         "map_click" in st.session_state and
         st.session_state.get("google_nearby")
     ):
         clat, clon = st.session_state["map_click"]
 
-        # Find the closest Google Nearby marker
         closest = None
         min_dist = float("inf")
 
@@ -426,23 +478,18 @@ with right_col:
                 min_dist = dist
                 closest = place
 
-        # Only treat as a “nearby click” if the click was VERY close
         if closest and min_dist < 0.00005:
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
             details = google_place_details(closest["place_id"])
             norm = normalize_place_to_restaurant(details)
 
-            st.session_state["google_restaurant_nearby"] = norm
-
-            # Display
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
             st.write(f"**ZIP:** {norm['zipcode']}")
             st.write(f"**Borough:** {norm['borough']}")
             st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
-            # Predict
             pred = predict_from_raw_restaurant(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
@@ -459,18 +506,18 @@ with right_col:
                 st.write(f"{g}: {p*100:.1f}%")
 
             st.markdown("---")
-            st.stop()     # DO NOT SHOW MAP CLICK PREDICTION BELOW THIS
+            st.stop()
 
 
-    # -------------------------------------------------
-    # PRIORITY 3 — Map click prediction (NO Google Search / NO Google Nearby)
-    # -------------------------------------------------
+
+    # =================================================
+    # PRIORITY 3 — Map click prediction
+    # =================================================
     if "map_click" in st.session_state:
         clat, clon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
 
-        # Reverse geocode
         API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
         geo_url = (
             f"https://maps.googleapis.com/maps/api/geocode/json"
@@ -524,51 +571,8 @@ with right_col:
         st.stop()
 
 
-    # -------------------------------------------------
-    # PRIORITY 1 — Google Search result (HIGHEST)
-    # -------------------------------------------------
-    if st.session_state.get("google_restaurant"):
-        g = st.session_state["google_restaurant"]
 
-        st.markdown("## 🔍 Google Restaurant Selected")
-        st.write(f"**Name:** {g['name']}")
-        st.write(f"**Address:** {g['address']}")
-        st.write(f"**ZIP:** {g['zipcode']}")
-        st.write(f"**Borough:** {g['borough']}")
-        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
-
-        cuisine_input = st.text_input(
-            "Refine Cuisine:", 
-            value=g["cuisine_description"]
-        )
-
-        if st.button("Predict Grade (Google Restaurant)"):
-            refined = g.copy()
-            refined["cuisine_description"] = cuisine_input
-
-            pred = predict_from_raw_restaurant(refined)
-            grade = pred["grade"]
-            probs = pred["probabilities"]
-            color = get_grade_color(grade)
-
-            st.markdown("### ⭐ Prediction Result")
-            st.markdown(
-                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True
-            )
-
-            st.markdown("#### Confidence")
-            for h, p in probs.items():
-                st.write(f"{h}: {p*100:.1f}%")
-
-        st.markdown("---")
-        st.stop()      # IMPORTANT: Do not show ANYTHING below this point    
-
-
-    # -------------------------------------------------
-    # PRIORITY 4 — Default (nothing selected)
-    # -------------------------------------------------
+    # =================================================
+    # PRIORITY 4 — Default (nothing selected yet)
+    # =================================================
     st.info("Select a restaurant or click the map to begin.")
-
-
-
