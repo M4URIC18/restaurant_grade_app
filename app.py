@@ -18,7 +18,6 @@ from src.utils import (
 )
 # Google Places module (step 12)
 from src.places import (
-    google_text_search,
     google_place_details,
     reverse_geocode,
     guess_cuisine_from_place,
