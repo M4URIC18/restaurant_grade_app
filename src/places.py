@@ -7,35 +7,6 @@ def get_api_key():
     return os.environ.get("GOOGLE_MAPS_API_KEY")
 
 
-# -------------------------------------------------
-# 1. Google Places Text Search
-# -------------------------------------------------
-def google_text_search(query):
-    API_KEY = get_api_key()
-    if not API_KEY:
-        return []
-
-    encoded_query = urllib.parse.quote(query)
-
-    # default NYC center as bias
-    nyc_center = "40.7128,-74.0060"
-
-    url = (
-        "https://maps.googleapis.com/maps/api/place/textsearch/json"
-        f"?query={encoded_query}"
-        f"&location={nyc_center}"
-        f"&radius=30000"        # 30 km radius for NYC
-        f"&region=us"
-        f"&key={API_KEY}"
-    )
-
-    resp = requests.get(url).json()
-
-    if resp.get("status") not in ["OK", "ZERO_RESULTS"]:
-        return []
-
-    return resp.get("results", [])
-
 
 
 # -------------------------------------------------
@@ -100,33 +71,34 @@ def reverse_geocode(lat, lng):
     return zipcode, borough, address
 
 
-# -------------------------------------------------
-# 4. Guess cuisine
-# -------------------------------------------------
-def guess_cuisine_from_place(place_obj):
-    types = place_obj.get("types", [])
-    cuisine_tags = [t for t in types if "_restaurant" in t]
-
-    if not cuisine_tags:
-        return None
-
-    raw = cuisine_tags[0].replace("_restaurant", "")
-    return raw.replace("_", " ").title()
 
 
 # -------------------------------------------------
 # 5. Normalize Place Details → Model Input
 # -------------------------------------------------
 def normalize_place_to_restaurant(details):
+    """
+    Convert a Google Place Details result into the schema used by the ML model.
+    Includes cuisine detection using Google 'types'.
+    """
+
+    # 1. Extract base info
     name = details.get("name", "")
     address = details.get("formatted_address", "")
 
     lat = details["geometry"]["location"]["lat"]
     lng = details["geometry"]["location"]["lng"]
 
+    # 2. Reverse geocode for ZIP + Borough
     zipcode, borough, _addr = reverse_geocode(lat, lng)
 
-    cuisine = guess_cuisine_from_place(details) or "Other"
+    # 3. Cuisine detection (MAIN METHOD)
+    types_list = details.get("types", [])
+    cuisine = map_google_types_to_cuisine(types_list)
+
+    # 4. Safety fallback
+    if cuisine is None or cuisine.strip() == "":
+        cuisine = "Other"
 
     return {
         "name": name,
@@ -139,6 +111,40 @@ def normalize_place_to_restaurant(details):
         "score": None,
         "critical_flag_bin": None,
     }
+
+
+def map_google_types_to_cuisine(types_list):
+    """
+    Converts Google Place 'types' into a cuisine string for the ML model.
+    """
+    if not types_list:
+        return "Unknown"
+
+    # Priority 1: Look for tags like 'mexican_restaurant', 'chinese_restaurant'
+    for t in types_list:
+        if t.endswith("_restaurant"):
+            return t.replace("_restaurant", "").replace("_", " ").title()
+
+    # Priority 2: Common food categories
+    keyword_map = {
+        "fast_food": "Fast Food",
+        "pizza": "Pizza",
+        "cafe": "Cafe",
+        "bar": "Bar",
+        "bakery": "Bakery",
+        "seafood": "Seafood",
+        "steakhouse": "Steakhouse",
+        "sandwich": "Sandwiches",
+        "deli": "Deli",
+    }
+    for t in types_list:
+        for key, val in keyword_map.items():
+            if key in t:
+                return val
+
+    # Default fallback
+    return "Other"
+
 
 
 # -------------------------------------------------
