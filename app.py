@@ -144,100 +144,6 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
 
-# -------------------------------------------------
-# Google Search (Step 12 – unified & FIXED)
-# -------------------------------------------------
-st.subheader("🔍 Search Any Restaurant (Google Places)")
-
-google_query = st.text_input(
-    "Search restaurant by name:",
-    placeholder="e.g. Shake Shack, Katz Deli, Chipotle…"
-)
-
-# Prepare session slots
-if "google_search_results" not in st.session_state:
-    st.session_state["google_search_results"] = []
-
-if "google_restaurant" not in st.session_state:
-    st.session_state["google_restaurant"] = None
-
-
-# -------------------------------------------------
-# 1. Perform Google Text Search
-# -------------------------------------------------
-if google_query:
-    places = google_text_search(google_query)
-
-    # Save to session (fixes refresh issues)
-    st.session_state["google_search_results"] = places
-
-    if not places:
-        st.warning("No matching restaurants found.")
-    else:
-        names = [p["name"] for p in places]
-        choice = st.selectbox("Select restaurant:", names)
-
-        selected = next(p for p in places if p["name"] == choice)
-
-        # -------------------------------------------------
-        # 2. Get full Google Place Details
-        # -------------------------------------------------
-        details = google_place_details(selected["place_id"])
-
-        # -------------------------------------------------
-        # 3. Normalize into a standard restaurant object
-        # -------------------------------------------------
-        norm = normalize_place_to_restaurant(details)
-
-        # Store normalized (so map section can draw marker)
-        st.session_state["google_restaurant"] = norm
-
-        # -------------------------------------------------
-        # 4. Predict grade
-        # -------------------------------------------------
-        from src.predictor import predict_from_raw_restaurant
-        pred = predict_from_raw_restaurant(norm)
-
-        grade = pred["grade"]
-        probs = pred["probabilities"]
-        color = get_grade_color(grade)
-
-        # -------------------------------------------------
-        # 5. Show result panel
-        # -------------------------------------------------
-        st.markdown("### ⭐ Google Search Prediction")
-        st.write(f"**Name:** {norm['name']}")
-        st.write(f"**Address:** {norm['address']}")
-        st.write(f"**ZIP:** {norm['zipcode']}")
-        st.write(f"**Borough:** {norm['borough']}")
-        st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
-
-        st.markdown(
-            f"**Predicted Grade:** "
-            f"<span style='color:{color}; font-size:26px; font-weight:bold'>{grade}</span>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown("#### Confidence")
-        for g, p in probs.items():
-            st.write(f"{g}: {p*100:.1f}%")
-
-
-        # Clear Google Search result
-        if st.button("Clear Google Search"):
-            clear_all_selections()    
-
-        st.markdown("---")
-
-
-
-
-
-
-
-
-
-
 
 
 # -------------------------------------------------
@@ -334,35 +240,6 @@ with left_col:
 
 
 
-        # -------------------------------------------------
-        # Google restaurant marker (Step 12 – FIXED)
-        # -------------------------------------------------
-        if st.session_state.get("google_restaurant"):
-            g = st.session_state["google_restaurant"]
-
-            # Robust latitude/longitude handling
-            glat = g.get("latitude") or g.get("lat")
-            glon = g.get("longitude") or g.get("lon") or g.get("lng")
-
-            if glat and glon:
-                popup_html = f"""
-                <div style="font-size:14px;">
-                    <b>{g.get('name', 'Unknown')}</b><br>
-                    {g.get('address', '')}<br>
-                    <span style='color:blue;'>Google Search Result</span>
-                </div>
-                """
-
-                folium.Marker(
-                    location=[glat, glon],
-                    popup=folium.Popup(popup_html, max_width=300),
-                    icon=folium.Icon(color="blue", icon="info-sign")
-                ).add_to(m)
-
-                # recenter map after adding marker
-                m.location = [glat, glon]
-                m.zoom_start = 15
-
 
 
         # -------------------------------------------------
@@ -411,83 +288,106 @@ with right_col:
     from src.predictor import predict_from_raw_restaurant
     import requests
 
+    # Safety: make sure these exist in session
+    if "google_nearby" not in st.session_state:
+        st.session_state["google_nearby"] = []
+    if "map_click" not in st.session_state:
+        st.session_state["map_click"] = None
+
+    has_click = (
+        "map_click" in st.session_state and
+        st.session_state["map_click"] is not None
+    )
+
+    # Small helper to compute squared distance
+    def _dist2(lat1, lon1, lat2, lon2):
+        return (lat1 - lat2)**2 + (lon1 - lon2)**2
+
     # =================================================
-    # PRIORITY 1 — Google Search result (HIGHEST)
+    # PRIORITY 1 — Dataset restaurant (CSV) click
     # =================================================
-    if st.session_state.get("google_restaurant"):
-        g = st.session_state["google_restaurant"]
+    if has_click and (len(df_filtered) > 0):
+        clat, clon = st.session_state["map_click"]
 
-        st.markdown("## 🔍 Google Restaurant Selected")
-        st.write(f"**Name:** {g['name']}")
-        st.write(f"**Address:** {g['address']}")
-        st.write(f"**ZIP:** {g['zipcode']}")
-        st.write(f"**Borough:** {g['borough']}")
-        st.write(f"**Cuisine Guess:** {g['cuisine_description']}")
+        closest_row = None
+        min_ds_dist = float("inf")
 
-        cuisine_input = st.text_input(
-            "Refine Cuisine:",
-            value=g["cuisine_description"]
-        )
+        for _, row in df_filtered.iterrows():
+            if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+                continue
+            d2 = _dist2(clat, clon, row["latitude"], row["longitude"])
+            if d2 < min_ds_dist:
+                min_ds_dist = d2
+                closest_row = row
 
-        if st.button("Predict Grade (Google Restaurant)"):
-            refined = g.copy()
-            refined["cuisine_description"] = cuisine_input
+        # Threshold: very close to a dataset dot
+        if closest_row is not None and min_ds_dist < 0.00002:
+            st.markdown("## 🍽️ Dataset Restaurant Selected")
 
-            pred = predict_from_raw_restaurant(refined)
+            name = closest_row.get("DBA") or closest_row.get("dba", "Unknown")
+            borough = closest_row.get("borough") or closest_row.get("boro")
+            zipcode = closest_row.get("zipcode")
+            cuisine = closest_row.get("cuisine_description", "Unknown")
+            score = closest_row.get("score", None)
+            crit = closest_row.get("critical_flag_bin", None)
+
+            st.write(f"**Name:** {name}")
+            st.write(f"**Borough:** {borough}")
+            st.write(f"**ZIP:** {zipcode}")
+            st.write(f"**Cuisine:** {cuisine}")
+            if score is not None:
+                st.write(f"**Score:** {score}")
+
+            raw_restaurant = {
+                "borough": borough,
+                "zipcode": zipcode,
+                "cuisine_description": cuisine,
+                "score": score,
+                "critical_flag_bin": crit,
+            }
+
+            pred = predict_from_raw_restaurant(raw_restaurant)
             grade = pred["grade"]
             probs = pred["probabilities"]
             color = get_grade_color(grade)
 
-            st.markdown("### ⭐ Prediction Result")
             st.markdown(
+                f"### ⭐ Predicted Grade: "
                 f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
                 unsafe_allow_html=True
             )
 
             st.markdown("#### Confidence")
-            for h, p in probs.items():
-                st.write(f"{h}: {p*100:.1f}%")
+            for g_label, p in probs.items():
+                st.write(f"{g_label}: {p*100:.1f}%")
 
-        if st.button("❌ Clear Search"):
-            st.session_state["google_restaurant"] = None
-            st.session_state["map_click"] = None
-
-        st.markdown("---")
-        st.stop()
-
+            st.markdown("---")
+            st.stop()
 
     # =================================================
-    # PRIORITY 2 — Google Nearby restaurant click
+    # PRIORITY 2 — Google Nearby restaurant click (blue dot)
     # =================================================
-    if (
-        "map_click" in st.session_state and
-        st.session_state.get("google_nearby")
-    ):
+    if has_click and st.session_state.get("google_nearby"):
         clat, clon = st.session_state["map_click"]
 
-        closest = None
-        min_dist = float("inf")
+        closest_place = None
+        min_nb_dist = float("inf")
 
         for place in st.session_state["google_nearby"]:
             plat = place["geometry"]["location"]["lat"]
             plon = place["geometry"]["location"]["lng"]
-            dist = (plat - clat)**2 + (plon - clon)**2
+            d2 = _dist2(clat, clon, plat, plon)
+            if d2 < min_nb_dist:
+                min_nb_dist = d2
+                closest_place = place
 
-            if dist < min_dist:
-                min_dist = dist
-                closest = place
-
-        if closest and min_dist < 0.00005:
-
-            # Clear Google Search so this wins
-            st.session_state["google_restaurant"] = None
-
+        # If click is close to a blue marker
+        if closest_place is not None and min_nb_dist < 0.00002:
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
-            details = google_place_details(closest["place_id"])
+            # Get full details from Google
+            details = google_place_details(closest_place["place_id"])
             norm = normalize_place_to_restaurant(details)
-
-            st.session_state["google_restaurant_nearby"] = norm
 
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
@@ -507,85 +407,16 @@ with right_col:
             )
 
             st.markdown("#### Confidence")
-            for g, p in probs.items():
-                st.write(f"{g}: {p*100:.1f}%")
+            for g_label, p in probs.items():
+                st.write(f"{g_label}: {p*100:.1f}%")
 
             st.markdown("---")
             st.stop()
 
-
     # =================================================
-    # PRIORITY 3 — DATASET Restaurant click
+    # PRIORITY 3 — Plain map click (no dot)
     # =================================================
-    if (
-        "map_click" in st.session_state and
-        st.session_state["map_click"] is not None and
-        not st.session_state.get("google_nearby") and
-        not st.session_state.get("google_restaurant")
-    ):
-
-        clat, clon = st.session_state["map_click"]
-
-        # Find closest restaurant in dataset
-        closest_row = None
-        min_dist = float("inf")
-
-        for _, row in df_filtered.iterrows():
-            dlat = row["latitude"]
-            dlon = row["longitude"]
-            dist = (dlat - clat)**2 + (dlon - clon)**2
-
-            if dist < min_dist:
-                min_dist = dist
-                closest_row = row
-
-        if closest_row is not None and min_dist < 0.00005:
-
-            # Clear other selections
-            st.session_state["google_restaurant"] = None
-            st.session_state["google_restaurant_nearby"] = None
-
-            st.markdown("## 🧾 Dataset Restaurant Selected")
-
-            st.write(f"**Name:** {closest_row['dba']}")
-            st.write(f"**ZIP:** {closest_row['zipcode']}")
-            st.write(f"**Borough:** {closest_row['borough']}")
-            st.write(f"**Cuisine:** {closest_row['cuisine_description']}")
-
-            raw_restaurant = {
-                "borough": closest_row["borough"],
-                "zipcode": closest_row["zipcode"],
-                "cuisine_description": closest_row["cuisine_description"],
-                "score": closest_row.get("score"),
-                "critical_flag_bin": closest_row.get("critical_flag_bin"),
-            }
-
-            pred = predict_from_raw_restaurant(raw_restaurant)
-            grade = pred["grade"]
-            probs = pred["probabilities"]
-            color = get_grade_color(grade)
-
-            st.markdown(
-                f"### ⭐ Predicted Grade: "
-                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True
-            )
-
-            st.markdown("#### Confidence")
-            for g, p in probs.items():
-                st.write(f"{g}: {p*100:.1f}%")
-
-            st.markdown("---")
-            st.stop()
-
-
-    # =================================================
-    # PRIORITY 4 — Bare map click (no restaurant)
-    # =================================================
-    if (
-        "map_click" in st.session_state and
-        st.session_state["map_click"] is not None
-    ):
+    if has_click:
         clat, clon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
@@ -636,14 +467,13 @@ with right_col:
         )
 
         st.markdown("#### Confidence")
-        for g, p in probs.items():
-            st.write(f"{g}: {p*100:.1f}%")
+        for g_label, p in probs.items():
+            st.write(f"{g_label}: {p*100:.1f}%")
 
         st.markdown("---")
         st.stop()
 
-
     # =================================================
-    # PRIORITY 5 — Nothing selected
+    # PRIORITY 4 — Default
     # =================================================
-    st.info("Select a restaurant or click the map to begin.")
+    st.info("Select a restaurant (red/green/yellow) or click the map to begin.")
