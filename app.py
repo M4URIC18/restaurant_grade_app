@@ -20,7 +20,6 @@ from src.utils import (
 from src.places import (
     google_place_details,
     reverse_geocode,
-    guess_cuisine_from_place,
     normalize_place_to_restaurant,
     google_nearby_restaurants
 )
