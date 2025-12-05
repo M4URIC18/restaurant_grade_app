@@ -189,32 +189,48 @@ with left_col:
 
 
         # -------------------------------------------------
-        # Google Nearby Restaurants (Step 13)  ✅ FIXED
+        # Google Nearby Restaurants (Step 13) — FINAL
         # -------------------------------------------------
         nearby = []
+
+        # Only run nearby search if user clicked and NOT selecting a restaurant right now
         if (
             "map_click" in st.session_state and
-            st.session_state["map_click"] is not None
+            st.session_state["map_click"] is not None and
+            not st.session_state.get("google_restaurant_nearby")   # prevent re-run
         ):
             clat, clon = st.session_state["map_click"]
 
-
             from src.places import google_nearby_restaurants
 
-            # Use the dedicated Nearby Search endpoint  ✅
-            
-            # 1. RUN Google nearby search (inside a spinner)
-            with st.spinner("🔍 Loading nearby restaurants…"):
+            # 1. RUN Google Nearby Search (inside spinner)
+            with st.spinner("🔍 Finding restaurants near this location…"):
                 nearby = google_nearby_restaurants(clat, clon)
 
-
-            # Save results for right column prediction logic
+            # Save raw results
             st.session_state["google_nearby"] = nearby
 
-            for place in nearby:
+
+        # 2. Render blue markers (even if search didn’t run this click)
+        if st.session_state.get("google_nearby"):
+            for place in st.session_state["google_nearby"]:
                 plat = place["geometry"]["location"]["lat"]
                 plon = place["geometry"]["location"]["lng"]
                 name = place.get("name", "Unknown")
+                pid = place.get("place_id")
+
+                # Is this the SELECTED nearby restaurant?
+                selected = (
+                    st.session_state.get("google_restaurant_nearby") and
+                    st.session_state["google_restaurant_nearby"].get("place_id") == pid
+                )
+
+                # Sticky tooltip when selected
+                tooltip_text = f"⭐ {name}" if selected else name
+
+                # Larger marker if selected
+                radius = 8 if selected else 5
+                color = "#ff8800" if selected else "#1e90ff"
 
                 popup_html = f"""
                 <div style='font-size:14px;'>
@@ -225,18 +241,21 @@ with left_col:
 
                 marker = folium.CircleMarker(
                     location=[plat, plon],
-                    radius=5,
+                    radius=radius,
                     popup=folium.Popup(popup_html, max_width=250),
-                    color="#1e90ff",
+                    color=color,
                     fill=True,
                     fill_opacity=0.9
                 )
 
-                # NEW → Show name when hovering  
-                folium.Tooltip(name).add_to(marker)
+                # Hover label
+                folium.Tooltip(tooltip_text).add_to(marker)
 
                 marker.add_to(m)
-                marker.place_id = place.get("place_id")
+
+                # store metadata
+                marker.place_id = pid
+
 
 
 
@@ -288,25 +307,23 @@ with right_col:
     from src.predictor import predict_from_raw_restaurant
     import requests
 
-    # Safety: make sure these exist in session
-    if "google_nearby" not in st.session_state:
-        st.session_state["google_nearby"] = []
-    if "map_click" not in st.session_state:
-        st.session_state["map_click"] = None
+    # Safety defaults
+    st.session_state.setdefault("google_nearby", [])
+    st.session_state.setdefault("map_click", None)
 
     has_click = (
-        "map_click" in st.session_state and
         st.session_state["map_click"] is not None
     )
 
-    # Small helper to compute squared distance
+    # Distance helper
     def _dist2(lat1, lon1, lat2, lon2):
         return (lat1 - lat2)**2 + (lon1 - lon2)**2
+
 
     # =================================================
     # PRIORITY 1 — Dataset restaurant (CSV) click
     # =================================================
-    if has_click and (len(df_filtered) > 0):
+    if has_click and len(df_filtered) > 0:
         clat, clon = st.session_state["map_click"]
 
         closest_row = None
@@ -320,7 +337,7 @@ with right_col:
                 min_ds_dist = d2
                 closest_row = row
 
-        # Threshold: very close to a dataset dot
+        # Very close to a dataset marker
         if closest_row is not None and min_ds_dist < 0.00002:
             st.markdown("## 🍽️ Dataset Restaurant Selected")
 
@@ -338,6 +355,7 @@ with right_col:
             if score is not None:
                 st.write(f"**Score:** {score}")
 
+            # Predict
             raw_restaurant = {
                 "borough": borough,
                 "zipcode": zipcode,
@@ -364,6 +382,7 @@ with right_col:
             st.markdown("---")
             st.stop()
 
+
     # =================================================
     # PRIORITY 2 — Google Nearby restaurant click (blue dot)
     # =================================================
@@ -381,13 +400,14 @@ with right_col:
                 min_nb_dist = d2
                 closest_place = place
 
-        # If click is close to a blue marker
+        # Close to a blue marker → select nearby restaurant
         if closest_place is not None and min_nb_dist < 0.00002:
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
-            # Get full details from Google
             details = google_place_details(closest_place["place_id"])
             norm = normalize_place_to_restaurant(details)
+
+            st.session_state["google_restaurant_nearby"] = norm
 
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
@@ -395,6 +415,7 @@ with right_col:
             st.write(f"**Borough:** {norm['borough']}")
             st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
 
+            # Predict
             pred = predict_from_raw_restaurant(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
@@ -413,13 +434,11 @@ with right_col:
             st.markdown("---")
             st.stop()
 
+
     # =================================================
-    # PRIORITY 3 — Plain map click (NO prediction)
+    # PRIORITY 3 — Plain map click (no prediction)
     # =================================================
-    if (
-        "map_click" in st.session_state and
-        st.session_state["map_click"] is not None
-    ):
+    if has_click:
         clat, clon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
@@ -451,7 +470,6 @@ with right_col:
         st.write(f"**Borough:** {borough}")
 
         st.info("Click a restaurant to see the predicted grade.")
-
         st.markdown("---")
         st.stop()
 
@@ -459,4 +477,4 @@ with right_col:
     # =================================================
     # PRIORITY 4 — Default
     # =================================================
-    st.info("Select a restaurant (red/green/yellow) or click the map to begin.")
+    st.info("Select a restaurant (dataset or blue marker) or click the map to begin.")
