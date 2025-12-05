@@ -409,11 +409,13 @@ with right_col:
 
             st.session_state["google_restaurant_nearby"] = norm
 
+            cuisine = norm.get("cuisine_description", "Other") or "Other"
+
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
             st.write(f"**ZIP:** {norm['zipcode']}")
             st.write(f"**Borough:** {norm['borough']}")
-            st.write(f"**Cuisine Guess:** {norm['cuisine_description']}")
+            st.write(f"**Cuisine:** {cuisine}")
 
             # Predict
             pred = predict_from_raw_restaurant(norm)
