@@ -414,9 +414,12 @@ with right_col:
             st.stop()
 
     # =================================================
-    # PRIORITY 3 — Plain map click (no dot)
+    # PRIORITY 3 — Plain map click (NO prediction)
     # =================================================
-    if has_click:
+    if (
+        "map_click" in st.session_state and
+        st.session_state["map_click"] is not None
+    ):
         clat, clon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
@@ -447,31 +450,11 @@ with right_col:
         st.write(f"**ZIP:** {zipcode}")
         st.write(f"**Borough:** {borough}")
 
-        raw_restaurant = {
-            "borough": borough,
-            "zipcode": zipcode,
-            "cuisine_description": "Unknown",
-            "score": None,
-            "critical_flag_bin": None,
-        }
-
-        pred = predict_from_raw_restaurant(raw_restaurant)
-        grade = pred["grade"]
-        probs = pred["probabilities"]
-        color = get_grade_color(grade)
-
-        st.markdown(
-            f"### 🍽️ Prediction for Clicked Location: "
-            f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-            unsafe_allow_html=True
-        )
-
-        st.markdown("#### Confidence")
-        for g_label, p in probs.items():
-            st.write(f"{g_label}: {p*100:.1f}%")
+        st.info("Click a restaurant to see the predicted grade.")
 
         st.markdown("---")
         st.stop()
+
 
     # =================================================
     # PRIORITY 4 — Default
