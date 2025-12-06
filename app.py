@@ -29,6 +29,8 @@ from src.places import (
     google_nearby_restaurants
 )
 
+print(">>> APP STARTED")
+
 
 # -------------------------------------------------
 # Helper: clear everything
@@ -80,6 +82,7 @@ st.markdown(
 # -------------------------------------------------
 # Load data
 # -------------------------------------------------
+print(">>> LOADING DATA")
 @st.cache_data
 def load_app_data():
     df = get_data()
@@ -97,6 +100,8 @@ def load_app_data():
 
 
 df = load_app_data()
+
+print(">>> DATA LOADED")
 
 if df.empty:
     st.error("No data loaded. Please check your CSV files in the data/ folder.")
@@ -156,6 +161,8 @@ left_col, right_col = st.columns([2, 1])
 
 with left_col:
     st.subheader(" Map of Restaurants")
+
+    print(">>> BUILDING MAP")
 
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
@@ -384,6 +391,7 @@ with right_col:
             st.markdown("---")
             st.stop()
 
+    print(">>> RENDER UI")
 
     # =================================================
     # PRIORITY 2 — Google Nearby restaurant click (blue dot)
