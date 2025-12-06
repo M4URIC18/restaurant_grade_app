@@ -178,7 +178,11 @@ with left_col:
         # -------------------------------------------------
         # 2. Add dataset restaurants to the map
         # -------------------------------------------------
-        for _, row in df_filtered.iterrows():
+        # Limit markers for performance
+        MAX_MARKERS = 2000
+        df_for_map = df_filtered.head(MAX_MARKERS)
+
+        for _, row in df_for_map.iterrows():
             lat = row["latitude"]
             lon = row["longitude"]
             grade = row.get("grade", "N/A")
@@ -194,8 +198,8 @@ with left_col:
                 fill=True,
                 fill_opacity=0.8
             )
-
             marker.add_to(m)
+
 
 
         # -------------------------------------------------
