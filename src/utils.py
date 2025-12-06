@@ -200,7 +200,7 @@ def build_feature_vector_from_raw(raw):
 
     # 3. Cuisine
     cuisine = raw.get("cuisine_description") or "other"
-    cuisine = str(cuisine).strip().lower()
+    cuisine = str(cuisine).strip().title()
 
     # 4. Score (default if missing)
     score = raw.get("score")
@@ -208,7 +208,7 @@ def build_feature_vector_from_raw(raw):
         score = 12.0  # typical A-level restaurant score
 
     # 5. Critical flag (default)
-    crit = raw.get("critical_flag_bin")
+    crit = raw.get("critical_flag") or raw.get("critical_flag_bin")
     if crit is None:
         crit = 0
 
@@ -217,10 +217,10 @@ def build_feature_vector_from_raw(raw):
 
     # 7. Build final dict
     features = {
-        "borough": borough or "Unknown",
+        "boro": borough or "Unknown",
         "zipcode": zipcode or 0,
         "cuisine_description": cuisine,
-        "critical_flag_bin": crit,
+        "critical_flag": crit,
         "score": float(score),
     }
 
