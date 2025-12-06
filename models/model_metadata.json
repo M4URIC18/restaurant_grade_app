@@ -1,20 +1,23 @@
 {
     "feature_columns": [
-      "borough",
-      "zipcode",
-      "cuisine_description",
-      "critical_flag_bin",
-      "score",
-      "nyc_poverty_rate",
-      "median_income",
-      "perc_white",
-      "perc_black",
-      "perc_asian",
-      "perc_hispanic",
-      "indexscore"
+        "score",
+        "nyc_poverty_rate",
+        "median_income",
+        "perc_white",
+        "perc_black",
+        "perc_asian",
+        "perc_other",
+        "perc_hispanic",
+        "indexscore",
+        "population",
+        "pop_missing",
+        "demo_missing",
+        "critical_flag",
+        "boro",
+        "zipcode",
+        "cuisine_description",
+        "violation_code"
     ],
     "encoders": {},
     "scaler_needed": false
-  }
-  
-  
+}
