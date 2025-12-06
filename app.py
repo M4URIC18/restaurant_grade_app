@@ -11,7 +11,8 @@ from src.data_loader import get_data
 
 from src.predictor import (
     predict_from_google,
-    predict_from_dataset_row
+    predict_from_dataset_row,
+    predict_from_raw_restaurant
 )
 
 from src.utils import (

@@ -5,6 +5,9 @@ import pandas as pd
 import os
 import streamlit as st
 
+from src.utils import build_feature_vector_from_raw
+
+
 
 # -------------------------------------------------
 # PATHS
@@ -237,6 +240,38 @@ def predict_from_dataset_row(row: dict):
     """
     features = build_features_from_dataset(row)
     return predict_from_features(features)
+
+
+def predict_from_raw_restaurant(raw_restaurant: dict):
+    """
+    Universal prediction entry point.
+    Works for:
+      - Dataset rows
+      - Google Places normalized restaurants
+      - Any raw dict coming from app.py
+    """
+
+    # 1. Build full enriched feature vector
+    features = build_feature_vector_from_raw(raw_restaurant)
+
+    # 2. Convert to DataFrame (same shape as model)
+    X = pd.DataFrame([features], columns=FEATURE_COLUMNS)
+
+    # 3. Predict
+    pred = model.predict(X)[0]
+    probs = model.predict_proba(X)[0]
+
+    # 4. Format probabilities
+    prob_dict = {
+        label: float(p)
+        for label, p in zip(model.classes_, probs)
+    }
+
+    return {
+        "grade": pred,
+        "probabilities": prob_dict,
+        "features_used": features
+    }
 
 
 
