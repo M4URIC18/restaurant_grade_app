@@ -240,3 +240,33 @@ if __name__ == "__main__":
     print(build_feature_vector_from_raw(raw_test))
 
 
+
+def normalize_borough(boro):
+    """
+    Clean borough names so everything is consistent for the ML model.
+    """
+    if not boro:
+        return "Unknown"
+
+    boro = str(boro).strip().lower()
+
+    mapping = {
+        "manhattan": "Manhattan",
+        "new york": "Manhattan",
+        "ny": "Manhattan",
+
+        "bronx": "Bronx",
+
+        "brooklyn": "Brooklyn",
+
+        "queens": "Queens",
+
+        "staten island": "Staten Island",
+        "statenisl": "Staten Island",
+        "staten": "Staten Island",
+    }
+
+    return mapping.get(boro, boro.title())
+
+
+
