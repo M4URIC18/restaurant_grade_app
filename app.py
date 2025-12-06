@@ -211,21 +211,20 @@ with left_col:
         nearby = []
 
         # Only run nearby search if user clicked and NOT selecting a restaurant right now
-        if (
-            "map_click" in st.session_state and
-            st.session_state["map_click"] is not None and
-            not st.session_state.get("google_restaurant_nearby")   # prevent re-run
-        ):
+        if "map_click" in st.session_state and st.session_state["map_click"] is not None:
             clat, clon = st.session_state["map_click"]
 
             from src.places import google_nearby_restaurants
 
-            # 1. RUN Google Nearby Search (inside spinner)
+            # Force re-search every time the user clicks the map
             with st.spinner("🔍 Finding restaurants near this location…"):
                 nearby = google_nearby_restaurants(clat, clon)
 
-            # Save raw results
+            # Store the new results
             st.session_state["google_nearby"] = nearby
+
+            # Clear previous selected restaurant
+            st.session_state["google_restaurant_nearby"] = None
 
 
         # 2. Render blue markers (even if search didn’t run this click)
@@ -295,6 +294,10 @@ with left_col:
         if map_data and map_data.get("last_clicked"):
             click_lat = map_data["last_clicked"]["lat"]
             click_lon = map_data["last_clicked"]["lng"]
+
+            click_lat = round(click_lat, 5)
+            click_lon = round(click_lon, 5)
+
 
             st.session_state["map_click"] = (click_lat, click_lon)
             # Clear Google Search result when user interacts with map
