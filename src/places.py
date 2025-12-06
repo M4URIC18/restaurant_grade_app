@@ -54,76 +54,98 @@ def reverse_geocode(lat, lng):
         address = result.get("formatted_address", "")
 
         for comp in result.get("address_components", []):
-            if "postal_code" in comp["types"]:
-                zipcode = comp["long_name"]
+            long_name = comp["long_name"]
+            low = long_name.lower()
 
-            low = comp["long_name"].lower()
-            borough_map = {
-                "manhattan": "Manhattan",
-                "bronx": "Bronx",
-                "brooklyn": "Brooklyn",
-                "queens": "Queens",
-                "staten island": "Staten Island",
-            }
-            if low in borough_map:
-                borough = borough_map[low]
+            # ZIP code
+            if "postal_code" in comp.get("types", []):
+                zipcode = long_name
+
+            # -------------------------------
+            # Correct Borough Detection
+            # -------------------------------
+            if "manhattan" in low or "new york county" in low:
+                borough = "Manhattan"
+            elif "bronx" in low or "bronx county" in low:
+                borough = "Bronx"
+            elif "brooklyn" in low or "kings county" in low:
+                borough = "Brooklyn"
+            elif "queens" in low or "queens county" in low:
+                borough = "Queens"
+            elif "staten island" in low or "richmond county" in low:
+                borough = "Staten Island"
 
     return zipcode, borough, address
-
 
 
 
 # -------------------------------------------------
 # 5. Normalize Place Details → Model Input
 # -------------------------------------------------
+# -------------------------------------------------
+# 5. Normalize Place Details → Model Input
+# -------------------------------------------------
 def normalize_place_to_restaurant(details):
     """
-    Convert a Google Place Details result into the schema used by the ML model.
-    Includes cuisine detection using Google 'types'.
+    Convert Google Place Details into the dictionary used by our ML model.
+    Ensures ALL required model fields exist with safe defaults.
     """
 
     # 1. Extract base info
-    name = details.get("name", "")
-    address = details.get("formatted_address", "")
+    name = details.get("name", "") or "Unknown"
+    address = details.get("formatted_address", "") or "Unknown"
 
     lat = details["geometry"]["location"]["lat"]
     lng = details["geometry"]["location"]["lng"]
 
-    # 2. Reverse geocode for ZIP + Borough
+    # 2. Reverse geocode → ZIP + Borough
     zipcode, borough, _addr = reverse_geocode(lat, lng)
 
-    # 3. Cuisine detection (MAIN METHOD)
+    # Normalize ZIP (model expects string)
+    zipcode = str(zipcode) if zipcode else "00000"
+
+    # Normalize borough (model expects 'boro' not 'borough')
+    if not borough:
+        borough = "Unknown"
+
+    # 3. Detect cuisine
     types_list = details.get("types", [])
     cuisine = map_google_types_to_cuisine(types_list)
-
-    # 4. Safety fallback
-    if cuisine is None or cuisine.strip() == "":
+    if not cuisine or cuisine.strip() == "":
         cuisine = "Other"
 
+    # 4. Build model-ready dict with FALLBACKS for ALL FIELDS
     return {
         "name": name,
         "address": address,
         "latitude": lat,
         "longitude": lng,
 
-        # must be string for model lookup
-        "zipcode": str(zipcode) if zipcode else None,
-
-        # model expects boro NOT borough
-        "boro": borough,
-
-        # cuisine
+        "zipcode": zipcode,          # always string
+        "boro": borough,             # always non-empty string
         "cuisine_description": cuisine,
 
-        # Google restaurants have no inspection score
-        "score": None,
+        # Google Places do NOT have these inspection features
+        "score": 10,                 # safe default inspection score
+        "critical_flag": 0,          # safe default (non-critical)
+        "violation_code": "00X",     # required model field
 
-        # model expects CRITICAL_FLAG (0/1). Google data usually = non-critical
-        "critical_flag": 0,
+        # Demographic fields → required by model, so fallback to neutral values
+        "nyc_poverty_rate": 0,
+        "median_income": 0,
+        "perc_white": 0,
+        "perc_black": 0,
+        "perc_asian": 0,
+        "perc_other": 0,
+        "perc_hispanic": 0,
+        "indexscore": 0,
 
-        # Google places have no violation code → safe default
-        "violation_code": "00X",
+        # Population → fallback
+        "population": 0,
+        "pop_missing": 1,
+        "demo_missing": 1,
     }
+
 
 
 
