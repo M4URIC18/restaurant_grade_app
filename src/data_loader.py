@@ -28,7 +28,12 @@ def load_restaurant_data():
     df = pd.read_csv(RESTAURANT_DATA_PATH)
 
     # Clean/standardize core fields
-    df['borough'] = df['borough'].astype(str).str.strip()
+    if "borough" in df.columns:
+        df["borough"] = df["borough"].astype(str).str.strip().str.title()
+    elif "boro" in df.columns:
+        df["borough"] = df["boro"].astype(str).str.strip().str.title()
+    else:
+        raise KeyError("❌ Neither 'borough' nor 'boro' found in dataset")
 
     df['cuisine_description'] = df['cuisine_description'].astype(str).str.strip().str.title()
 
