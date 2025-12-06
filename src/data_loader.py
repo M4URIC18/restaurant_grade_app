@@ -168,3 +168,58 @@ def load_demo_data():
         df = df.set_index("zipcode")
 
     return df
+
+# -------------------------------------------------
+# ZIP → demographic lookup for Google restaurants
+# -------------------------------------------------
+
+_zip_demo_cache = None
+
+def load_zip_demo_table():
+    """
+    Loads a ZIP → demographic table once into memory.
+    """
+    global _zip_demo_cache
+    if _zip_demo_cache is not None:
+        return _zip_demo_cache
+
+    # Load merged dataset that contains ZIP demographics
+    base_dir = os.path.dirname(os.path.dirname(__file__))
+    path = os.path.join(base_dir, "data", "df_merged_big.csv")
+
+    df = pd.read_csv(path)
+
+    # Keep ZIP + demo columns
+    keep = [
+        "zipcode",
+        "population",
+        "nyc_poverty_rate",
+        "median_income",
+        "perc_white",
+        "perc_black",
+        "perc_asian",
+        "perc_other",
+        "perc_hispanic",
+        "indexscore"
+    ]
+    df = df[keep].drop_duplicates(subset=["zipcode"])
+
+    df["zipcode"] = df["zipcode"].astype(str)
+
+    _zip_demo_cache = df.set_index("zipcode").to_dict(orient="index")
+    return _zip_demo_cache
+
+
+def lookup_zip_demo(zipcode: str):
+    """
+    Return demo dictionary from ZIP code.
+    If ZIP not found → return None.
+    """
+    if not zipcode:
+        return None
+
+    table = load_zip_demo_table()
+
+    zipcode = str(zipcode).strip()
+    return table.get(zipcode)
+

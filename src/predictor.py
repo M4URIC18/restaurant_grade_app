@@ -56,41 +56,77 @@ def normalize_borough(boro):
 # -------------------------------------------------
 # Google API → model feature conversion
 # -------------------------------------------------
+from src.data_loader import lookup_zip_demo
+from src.utils import normalize_borough
+
 
 def build_features_from_google(place: dict):
     """
-    Google Places restaurant → ML model feature dict
+    Google Places → ML model feature dict (with ZIP demographic enrichment)
     """
 
-    zipcode = place.get("zipcode")
-    if zipcode:
-        zipcode = str(zipcode).strip()
+    zipcode = str(place.get("zipcode") or "").strip()
 
-    features = {
-        "score": place.get("score", 12),  # safe NYC avg score
+    # -----------------------------
+    #  DEMOGRAPHIC LOOKUP BY ZIP
+    # -----------------------------
+    demo = lookup_zip_demo(zipcode)
 
-        "nyc_poverty_rate": place.get("nyc_poverty_rate", 0.20),
-        "median_income": place.get("median_income", 30000),
-        "perc_white": place.get("perc_white", 0.30),
-        "perc_black": place.get("perc_black", 0.30),
-        "perc_asian": place.get("perc_asian", 0.15),
-        "perc_other": place.get("perc_other", 0.05),
-        "perc_hispanic": place.get("perc_hispanic", 0.20),
-        "indexscore": place.get("indexscore", 4.0),
+    if demo:
+        # ZIP exists in our dataset
+        population       = demo.get("population", 0)
+        nyc_poverty_rate = demo.get("nyc_poverty_rate", 0)
+        median_income    = demo.get("median_income", 0)
+        perc_white       = demo.get("perc_white", 0)
+        perc_black       = demo.get("perc_black", 0)
+        perc_asian       = demo.get("perc_asian", 0)
+        perc_other       = demo.get("perc_other", 0)
+        perc_hispanic    = demo.get("perc_hispanic", 0)
+        indexscore       = demo.get("indexscore", 0)
 
-        "population": place.get("population", 50000),
-        "pop_missing": place.get("pop_missing", 1),
-        "demo_missing": place.get("demo_missing", 1),
+        pop_missing  = 0
+        demo_missing = 0
+    else:
+        # ZIP not found in dataset
+        population       = 0
+        nyc_poverty_rate = 0
+        median_income    = 0
+        perc_white       = 0
+        perc_black       = 0
+        perc_asian       = 0
+        perc_other       = 0
+        perc_hispanic    = 0
+        indexscore       = 0
+
+        pop_missing  = 1
+        demo_missing = 1
+
+    # -----------------------------
+    #  BUILD FEATURE DICTIONARY
+    # -----------------------------
+    return {
+        "score": place.get("score", 10),
+
+        "nyc_poverty_rate": nyc_poverty_rate,
+        "median_income": median_income,
+        "perc_white": perc_white,
+        "perc_black": perc_black,
+        "perc_asian": perc_asian,
+        "perc_other": perc_other,
+        "perc_hispanic": perc_hispanic,
+        "indexscore": indexscore,
+
+        "population": population,
+        "pop_missing": pop_missing,
+        "demo_missing": demo_missing,
 
         "critical_flag": place.get("critical_flag", 0),
 
-        "boro": normalize_borough(place.get("borough", "Unknown")),
+        "boro": normalize_borough(place.get("boro", "Unknown")),
         "zipcode": zipcode if zipcode else "00000",
-        "cuisine_description": place.get("cuisine_description", "Other"),
-        "violation_code": place.get("violation_code", "00X"),  # better default
+        "cuisine_description": place.get("cuisine_description", "Unknown"),
+        "violation_code": place.get("violation_code", "00X"),
     }
-
-    return features
 
 
 

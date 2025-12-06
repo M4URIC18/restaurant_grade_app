@@ -87,8 +87,8 @@ def reverse_geocode(lat, lng):
 # -------------------------------------------------
 def normalize_place_to_restaurant(details):
     """
-    Convert Google Place Details into the dictionary used by our ML model.
-    Ensures ALL required model fields exist with safe defaults.
+    Convert Google Place Details into the raw restaurant dictionary.
+    This will be later enriched with demographics via ZIP lookup.
     """
 
     # 1. Extract base info
@@ -98,53 +98,39 @@ def normalize_place_to_restaurant(details):
     lat = details["geometry"]["location"]["lat"]
     lng = details["geometry"]["location"]["lng"]
 
-    # 2. Reverse geocode → ZIP + Borough
+    # 2. Reverse geocode → ZIP + borough
     zipcode, borough, _addr = reverse_geocode(lat, lng)
 
-    # Normalize ZIP (model expects string)
     zipcode = str(zipcode) if zipcode else "00000"
-
-    # Normalize borough (model expects 'boro' not 'borough')
     if not borough:
         borough = "Unknown"
 
-    # 3. Detect cuisine
+    # 3. Cuisine detection
     types_list = details.get("types", [])
     cuisine = map_google_types_to_cuisine(types_list)
     if not cuisine or cuisine.strip() == "":
         cuisine = "Other"
 
-    # 4. Build model-ready dict with FALLBACKS for ALL FIELDS
+    # 4. Build the *raw* Google restaurant dict
+    #    (demographics will be added later)
     return {
         "name": name,
         "address": address,
         "latitude": lat,
         "longitude": lng,
 
-        "zipcode": zipcode,          # always string
-        "boro": borough,             # always non-empty string
+        "zipcode": zipcode,
+        "boro": borough,
+        "borough": borough,     # ← REQUIRED FIX
+
         "cuisine_description": cuisine,
 
-        # Google Places do NOT have these inspection features
-        "score": 10,                 # safe default inspection score
-        "critical_flag": 0,          # safe default (non-critical)
-        "violation_code": "00X",     # required model field
-
-        # Demographic fields → required by model, so fallback to neutral values
-        "nyc_poverty_rate": 0,
-        "median_income": 0,
-        "perc_white": 0,
-        "perc_black": 0,
-        "perc_asian": 0,
-        "perc_other": 0,
-        "perc_hispanic": 0,
-        "indexscore": 0,
-
-        # Population → fallback
-        "population": 0,
-        "pop_missing": 1,
-        "demo_missing": 1,
+        # Google restaurants do not have inspection data:
+        "score": 10,
+        "critical_flag": 0,
+        "violation_code": "00X",
     }
+
 
 
 
