@@ -180,53 +180,72 @@ def _demo_lookup(zipcode, borough):
 
 def build_feature_vector_from_raw(raw):
     """
-    Convert raw restaurant info into the exact 12 features
-    required by the model, even when data is missing.
+    Convert ANY restaurant (Google or dataset) into strict model-ready features.
+    Ensures:
+    - zipcode: str
+    - boro: str
+    - cuisine_description: str
+    - violation_code: str
+    - critical_flag: int
+    - score: float
     """
 
     # 1. Borough
-    borough = raw.get("borough")
-    if borough:
-        borough = str(borough).title()
-    else:
-        borough = None
+    borough = raw.get("boro") or raw.get("borough") or "Unknown"
+    borough = normalize_borough(borough)
 
-    # 2. ZIP code
-    zipcode = raw.get("zipcode")
-    try:
-        zipcode = int(zipcode)
-    except:
-        zipcode = None
+    # 2. ZIP code → ALWAYS STRING
+    zipcode = raw.get("zipcode") or "00000"
+    zipcode = str(zipcode).strip()
 
-    # 3. Cuisine
-    cuisine = raw.get("cuisine_description") or "other"
-    cuisine = str(cuisine).strip().title()
+    # 3. Cuisine description → ALWAYS STRING
+    cuisine = raw.get("cuisine_description") or "Other"
+    cuisine = str(cuisine).strip().lower()
 
-    # 4. Score (default if missing)
+    # 4. Score → float
     score = raw.get("score")
-    if score is None:
-        score = 12.0  # typical A-level restaurant score
+    try:
+        score = float(score)
+    except:
+        score = 12.0
 
-    # 5. Critical flag (default)
-    crit = raw.get("critical_flag") or raw.get("critical_flag_bin")
-    if crit is None:
+    # 5. Critical flag → int
+    crit = raw.get("critical_flag") or raw.get("critical_flag_bin") or 0
+    try:
+        crit = int(crit)
+    except:
         crit = 0
 
-    # 6. Demographics (ZIP → borough → global)
+    # 6. Violation code → ALWAYS STRING
+    vio = raw.get("violation_code") or "00X"
+    vio = str(vio)
+
+    # 7. Demographics
     demo = _demo_lookup(zipcode, borough)
 
-    # 7. Build final dict
+    # 8. Build final dictionary in correct shapes
     features = {
-        "boro": borough or "Unknown",
-        "zipcode": zipcode or 0,
-        "cuisine_description": cuisine,
+        "score": score,
+        "nyc_poverty_rate": demo.get("nyc_poverty_rate", 0),
+        "median_income": demo.get("median_income", 0),
+        "perc_white": demo.get("perc_white", 0),
+        "perc_black": demo.get("perc_black", 0),
+        "perc_asian": demo.get("perc_asian", 0),
+        "perc_other": demo.get("perc_other", 0),
+        "perc_hispanic": demo.get("perc_hispanic", 0),
+        "indexscore": demo.get("indexscore", 0),
+        "population": demo.get("population", 0),
+        "pop_missing": demo.get("pop_missing", 1),
+        "demo_missing": demo.get("demo_missing", 1),
         "critical_flag": crit,
-        "score": float(score),
+        "boro": borough,
+        "zipcode": zipcode,
+        "cuisine_description": cuisine,
+        "violation_code": vio
     }
 
-    features.update(demo)
-
     return features
+
 
 if __name__ == "__main__":
     raw_test = {

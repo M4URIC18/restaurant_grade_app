@@ -5,7 +5,11 @@ import pandas as pd
 import os
 import streamlit as st
 
-from src.utils import build_feature_vector_from_raw
+
+from src.utils import (
+    build_feature_vector_from_raw,
+    normalize_borough
+)
 
 
 
@@ -199,7 +203,13 @@ def to_dataframe(feature_dict: dict):
     for col in FEATURE_COLUMNS:
         row.append(feature_dict.get(col, 0))
 
+    print("DEBUG FEATURE TYPES:")
+    for k, v in feature_dict.items():
+        print(k, type(v), v)
+
+
     return pd.DataFrame([row], columns=FEATURE_COLUMNS)
+
 
 
 # -------------------------------------------------
@@ -219,6 +229,9 @@ def predict_from_features(feature_dict: dict):
         prob_dict = {label: float(p) for label, p in zip(model.classes_, probs_raw)}
     else:
         prob_dict = {}
+
+    print("DEBUG row to model:", X.dtypes)
+    print(X)
 
     return {
         "grade": pred,
