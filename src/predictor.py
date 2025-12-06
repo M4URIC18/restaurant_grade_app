@@ -3,19 +3,22 @@ import joblib
 import numpy as np
 import pandas as pd
 import os
+import streamlit as st
 
 # -------------------------------------------------
 # Load model + metadata once
 # -------------------------------------------------
 
-BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+@st.cache_resource
+def load_model():
+    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+    MODEL_PATH = os.path.join(BASE_DIR, "models", "restaurant_grade_model.pkl")
 
-MODEL_PATH = os.path.join(BASE_DIR, "models", "restaurant_grade_model.pkl")
-META_PATH = os.path.join(BASE_DIR, "models", "model_metadata.json")
+    print("Loading model from:", MODEL_PATH)
+    model = joblib.load(MODEL_PATH)
+    return model
 
-print("Loading model from:", MODEL_PATH)
-model = joblib.load(MODEL_PATH)
-print("Model loaded successfully!")
+model = load_model()
 
 # Load metadata
 with open(META_PATH, "r") as f:
