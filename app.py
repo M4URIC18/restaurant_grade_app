@@ -344,7 +344,7 @@ with right_col:
             st.markdown("## 🍽️ Dataset Restaurant Selected")
 
             name = closest_row.get("DBA") or closest_row.get("dba", "Unknown")
-            borough = closest_row.get("borough") or closest_row.get("boro")
+            borough = closest_row.get("boro") or closest_row.get("borough")
             zipcode = closest_row.get("zipcode")
             cuisine = closest_row.get("cuisine_description", "Unknown")
             score = closest_row.get("score", None)
@@ -416,7 +416,7 @@ with right_col:
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
             st.write(f"**ZIP:** {norm['zipcode']}")
-            st.write(f"**Borough:** {norm['borough']}")
+            st.write(f"**Borough:** {norm.get('boro', 'Unknown')}")
             st.write(f"**Cuisine:** {cuisine}")
 
             # Predict
