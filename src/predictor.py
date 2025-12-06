@@ -5,24 +5,34 @@ import pandas as pd
 import os
 import streamlit as st
 
-# -------------------------------------------------
-# Load model + metadata once
-# -------------------------------------------------
 
+# -------------------------------------------------
+# PATHS
+# -------------------------------------------------
+BASE_DIR = os.path.dirname(os.path.dirname(__file__))
+MODEL_PATH = os.path.join(BASE_DIR, "models", "restaurant_grade_model.pkl")
+META_PATH = os.path.join(BASE_DIR, "models", "model_metadata.json")
+
+
+
+# -------------------------------------------------
+# LOAD MODEL WITH CACHE (Fix #1)
+# -------------------------------------------------
 @st.cache_resource
 def load_model():
-    BASE_DIR = os.path.dirname(os.path.dirname(__file__))
-    MODEL_PATH = os.path.join(BASE_DIR, "models", "restaurant_grade_model.pkl")
-
     print("Loading model from:", MODEL_PATH)
     model = joblib.load(MODEL_PATH)
+    print("Model loaded OK!")
     return model
 
-model = load_model()
+model = load_model()   # <-- cached
 
 # Load metadata
-with open(META_PATH, "r") as f:
-    metadata = json.load(f)
+try:
+    with open(META_PATH, "r") as f:
+        metadata = json.load(f)
+except Exception as e:
+    raise RuntimeError(f"❌ Could not load metadata JSON at {META_PATH}: {e}")
 
 FEATURE_COLUMNS = metadata["feature_columns"]
 ENCODERS = metadata.get("encoders", {})
