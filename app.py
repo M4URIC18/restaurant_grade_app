@@ -8,7 +8,12 @@ import requests
 from streamlit_folium import st_folium
 
 from src.data_loader import get_data
-from src.predictor import predict_restaurant_grade
+
+from src.predictor import (
+    predict_from_google,
+    predict_from_dataset_row
+)
+
 from src.utils import (
     get_grade_color,
     format_probabilities,
@@ -302,7 +307,6 @@ with left_col:
 with right_col:
     st.subheader(" Inspect & Predict")
 
-    from src.predictor import predict_from_raw_restaurant
     import requests
 
     # Safety defaults
@@ -362,7 +366,7 @@ with right_col:
                 "critical_flag_bin": crit,
             }
 
-            pred = predict_from_raw_restaurant(raw_restaurant)
+            pred = predict_from_dataset_row(raw_restaurant)
             grade = pred["grade"]
             probs = pred["probabilities"]
             color = get_grade_color(grade)
@@ -416,7 +420,7 @@ with right_col:
             st.write(f"**Cuisine:** {cuisine}")
 
             # Predict
-            pred = predict_from_raw_restaurant(norm)
+            pred = predict_from_google(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
             color = get_grade_color(grade)
