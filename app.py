@@ -187,30 +187,8 @@ with left_col:
         
         # --- Register custom map panes (ensures Google markers are on top) ---
         # --- SAFE: Add custom map panes for layering ---
-        pane_css = """
-        <style>
-            .leaflet-pane { z-index: 1; }
-            .leaflet-control { z-index: 9999 !important; }
-
-            #map .leaflet-pane.dataset_markers { z-index: 200; }
-            #map .leaflet-pane.google_markers { z-index: 600; }
-        </style>
-        """
-
-        m.get_root().html.add_child(folium.Element(pane_css))
-
-        # Create panes (safe inline JS)
-        pane_js = """
-        <script>
-            var datasetPane = document.querySelector('.leaflet-map-pane').appendChild(document.createElement('div'));
-            datasetPane.className = 'leaflet-pane dataset_markers';
-
-            var googlePane = document.querySelector('.leaflet-map-pane').appendChild(document.createElement('div'));
-            googlePane.className = 'leaflet-pane google_markers';
-        </script>
-        """
-
-        m.get_root().html.add_child(folium.Element(pane_js))
+        
+        
 
 
 
@@ -238,7 +216,7 @@ with left_col:
                 fill_opacity=0.8
             )
             marker.add_to(m)
-            marker.options = {"pane": "dataset_markers"}
+            # marker.options = {"pane": "dataset_markers"}
 
 
 
@@ -307,7 +285,7 @@ with left_col:
                 folium.Tooltip(tooltip_text).add_to(marker)
 
                 marker.add_to(m)
-                marker.options = {"pane": "google_markers"}
+                # marker.options = {"pane": "google_markers"}
                 # store metadata
                 marker.place_id = pid
 
