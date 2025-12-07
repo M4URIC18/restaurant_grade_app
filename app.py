@@ -301,14 +301,13 @@ with left_col:
                     fill=True,
                     fill_opacity=0.9
                 )
-                marker.options = {"pane": "google_markers"}
 
 
                 # Hover label
                 folium.Tooltip(tooltip_text).add_to(marker)
 
                 marker.add_to(m)
-
+                marker.options = {"pane": "google_markers"}
                 # store metadata
                 marker.place_id = pid
 
