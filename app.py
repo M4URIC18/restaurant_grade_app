@@ -226,31 +226,9 @@ with left_col:
         # -------------------------------------------------
         nearby = []
 
+        # Only run nearby search if user clicked and NOT selecting a restaurant right now
+        
 
-        # -------------------------------------------------
-        # Run Google Nearby ONLY on a *real* click (not zoom)
-        # -------------------------------------------------
-        if (
-            map_data
-            and map_data.get("last_clicked")  # real click, NOT zoom event
-        ):
-            click_lat = map_data["last_clicked"]["lat"]
-            click_lon = map_data["last_clicked"]["lng"]
-
-            # Save click
-            st.session_state["map_click"] = (click_lat, click_lon)
-
-            from src.places import google_nearby_restaurants
-
-            with st.spinner("🔍 Finding restaurants near this location…"):
-                nearby = google_nearby_restaurants(click_lat, click_lon)
-
-            st.session_state["google_nearby"] = nearby
-            st.session_state["google_restaurant_nearby"] = None
-
-            st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
-
-            
 
         # 2. Render blue markers (even if search didn’t run this click)
         if st.session_state.get("google_nearby"):
@@ -298,11 +276,6 @@ with left_col:
                 # store metadata
                 marker.place_id = pid
 
-
-
-
-
-
         # -------------------------------------------------
         # 4. Render Folium map
         # -------------------------------------------------
@@ -319,7 +292,29 @@ with left_col:
             ]
         )
 
-        # --- Save map state ---
+        # Run Google Nearby ONLY on a *real* click (not zoom)
+        if (
+            map_data
+            and map_data.get("last_clicked")  # real click
+        ):
+            click_lat = map_data["last_clicked"]["lat"]
+            click_lon = map_data["last_clicked"]["lng"]
+
+            # Save click
+            st.session_state["map_click"] = (click_lat, click_lon)
+
+            from src.places import google_nearby_restaurants
+
+            with st.spinner("🔍 Finding restaurants near this location…"):
+                nearby = google_nearby_restaurants(click_lat, click_lon)
+
+            st.session_state["google_nearby"] = nearby
+            st.session_state["google_restaurant_nearby"] = None
+
+            st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
+
+
+        
         # --- Save map state ---
         if map_data:
             center = map_data.get("center")
