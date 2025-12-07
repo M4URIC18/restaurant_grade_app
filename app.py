@@ -167,36 +167,35 @@ with left_col:
 
     print(">>> BUILDING MAP")
 
-    # ---------------------------------------------
-    # SESSION STATE DEFAULTS
-    # ---------------------------------------------
-    if "click_count" not in st.session_state:
-        st.session_state["click_count"] = 0
-
-    if "google_query_lock" not in st.session_state:
-        st.session_state["google_query_lock"] = True  # no query allowed until 3 clicks
-
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
     else:
-
         # -------------------------------------------------
         # 1. Create map centered on filtered dataset
         # -------------------------------------------------
+        # --- Determine map center ---
         default_center = [
             df_filtered["latitude"].mean(),
-            df_filtered["longitude"].mean(),
+            df_filtered["longitude"].mean()
         ]
+
         center = st.session_state.get("map_center", default_center)
         zoom = st.session_state.get("map_zoom", 12)
 
         m = folium.Map(location=center, zoom_start=zoom)
 
         
+        # --- Register custom map panes (ensures Google markers are on top) ---
+        # --- SAFE: Add custom map panes for layering ---
+        
+        
+
+
 
         # -------------------------------------------------
-        # 2. Base dataset markers
+        # 2. Add dataset restaurants to the map
         # -------------------------------------------------
+        # Limit markers for performance
         MAX_MARKERS = 2000
         df_for_map = df_filtered.head(MAX_MARKERS)
 
@@ -205,6 +204,7 @@ with left_col:
             lon = row["longitude"]
             grade = row.get("grade", "N/A")
             color = get_grade_color(grade)
+
             popup_html = restaurant_popup_html(row)
 
             marker = folium.CircleMarker(
@@ -213,16 +213,37 @@ with left_col:
                 popup=folium.Popup(popup_html, max_width=250),
                 color=color,
                 fill=True,
-                fill_opacity=0.8,
+                fill_opacity=0.8
             )
             marker.add_to(m)
-            marker.options = {"pane": "dataset_markers"}
+            # marker.options = {"pane": "dataset_markers"}
+
+
+
 
         # -------------------------------------------------
-        # 3. Google Nearby Restaurants (after 3 clicks)
+        # Google Nearby Restaurants (Step 13) — FINAL
         # -------------------------------------------------
+        nearby = []
 
-        # Render markers even if search is locked
+        # Only run nearby search if user clicked and NOT selecting a restaurant right now
+        if "map_click" in st.session_state and st.session_state["map_click"] is not None:
+            clat, clon = st.session_state["map_click"]
+
+            from src.places import google_nearby_restaurants
+
+            # Force re-search every time the user clicks the map
+            with st.spinner("🔍 Finding restaurants near this location…"):
+                nearby = google_nearby_restaurants(clat, clon)
+
+            # Store the new results
+            st.session_state["google_nearby"] = nearby
+
+            # Clear previous selected restaurant
+            st.session_state["google_restaurant_nearby"] = None
+
+
+        # 2. Render blue markers (even if search didn’t run this click)
         if st.session_state.get("google_nearby"):
             for place in st.session_state["google_nearby"]:
                 plat = place["geometry"]["location"]["lat"]
@@ -230,12 +251,16 @@ with left_col:
                 name = place.get("name", "Unknown")
                 pid = place.get("place_id")
 
+                # Is this the SELECTED nearby restaurant?
                 selected = (
-                    st.session_state.get("google_restaurant_nearby")
-                    and st.session_state["google_restaurant_nearby"].get("place_id") == pid
+                    st.session_state.get("google_restaurant_nearby") and
+                    st.session_state["google_restaurant_nearby"].get("place_id") == pid
                 )
 
+                # Sticky tooltip when selected
                 tooltip_text = f"⭐ {name}" if selected else name
+
+                # Larger marker if selected
                 radius = 8 if selected else 5
                 color = "#ff8800" if selected else "#1e90ff"
 
@@ -252,95 +277,85 @@ with left_col:
                     popup=folium.Popup(popup_html, max_width=250),
                     color=color,
                     fill=True,
-                    fill_opacity=0.9,
+                    fill_opacity=0.9
                 )
 
+
+                # Hover label
                 folium.Tooltip(tooltip_text).add_to(marker)
+
                 marker.add_to(m)
-                marker.options = {"pane": "google_markers"}
+                # marker.options = {"pane": "google_markers"}
+                # store metadata
                 marker.place_id = pid
 
+
+
+
+
+
         # -------------------------------------------------
-        # 4. Render Map
+        # 4. Render Folium map
         # -------------------------------------------------
         map_data = st_folium(
             m,
             width="100%",
             height=500,
             key="main_map",
-            returned_objects=["last_clicked"],
+            returned_objects=[
+                "last_clicked",
+                "center",
+                "zoom",
+                "bounds"
+            ]
         )
 
-        # -------------------------------------------------
-        # 5. Save map state (ONLY IF CHANGED)
-        # -------------------------------------------------
+        # --- Save map state ---
+        # --- Save map state ---
         if map_data:
-            if "center" in map_data and map_data["center"] != st.session_state.get("map_center"):
-                st.session_state["map_center"] = map_data["center"]
+            center = map_data.get("center")
+            zoom = map_data.get("zoom")
 
-            if "zoom" in map_data and map_data["zoom"] != st.session_state.get("map_zoom"):
-                st.session_state["map_zoom"] = map_data["zoom"]
+            if center:
+                st.session_state["map_center"] = [center["lat"], center["lng"]]
+
+            if zoom:
+                st.session_state["map_zoom"] = zoom
+
+
 
         # -------------------------------------------------
-        # 6. Click Handling (3-click activation)
+        # 5. Detect map click
         # -------------------------------------------------
+
         if map_data and map_data.get("last_clicked"):
             click_lat = map_data["last_clicked"]["lat"]
             click_lon = map_data["last_clicked"]["lng"]
 
+            # click_lat = round(click_lat, 5)
+            # click_lon = round(click_lon, 5)
+
             st.session_state["map_click"] = (click_lat, click_lon)
+
+            # Only clear selection if user clicks OUTSIDE Google marker regions
+            if not st.session_state.get("google_restaurant_nearby"):
+                st.session_state["google_restaurant"] = None
+
             st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
 
-            # Count clicks
-            st.session_state["click_count"] += 1
-
-            # After 3 clicks → unlock Google search
-            if st.session_state["click_count"] >= 3:
-                st.session_state["google_query_lock"] = False
-
-        # -------------------------------------------------
-        # 7. Run Google Search ONLY if unlocked
-        # -------------------------------------------------
-        if (
-            st.session_state.get("map_click")
-            and st.session_state.get("google_query_lock") is False
-        ):
-            clat, clon = st.session_state["map_click"]
-
-            from src.places import google_nearby_restaurants
-
-            with st.spinner("🔍 Finding restaurants near this area…"):
-                nearby = google_nearby_restaurants(clat, clon)
-
-            st.session_state["google_nearby"] = nearby
-
-            # Lock again until next 3 clicks
-            st.session_state["google_query_lock"] = True
-            st.session_state["click_count"] = 0
-
     # -------------------------------------------------
-    # 8. Restaurant table
+    # 6. Restaurant table
     # -------------------------------------------------
     st.subheader("Restaurant List")
     st.caption("Filtered view based on your selections in the sidebar.")
 
     cols_to_show = [
-        c
-        for c in [
-            "DBA",
-            "dba",
-            "borough",
-            "zipcode",
-            "cuisine_description",
-            "score",
-            "grade",
-            "inspection_date",
-        ]
+        c for c in ["DBA", "dba", "borough", "zipcode",
+                    "cuisine_description", "score", "grade", "inspection_date"]
         if c in df_filtered.columns
     ]
 
     st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
-
 
 
 
