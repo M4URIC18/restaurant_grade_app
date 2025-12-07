@@ -226,28 +226,31 @@ with left_col:
         # -------------------------------------------------
         nearby = []
 
-        # Only run nearby search if user clicked and NOT selecting a restaurant right now
-        # Only treat true clicks as map clicks
+
+        # -------------------------------------------------
+        # Run Google Nearby ONLY on a *real* click (not zoom)
+        # -------------------------------------------------
         if (
-            "map_click" in st.session_state 
-            and st.session_state["map_click"] is not None
-            and map_data 
-            and map_data.get("last_clicked")  # prevents zoom events from being treated as clicks
+            map_data
+            and map_data.get("last_clicked")  # real click, NOT zoom event
         ):
-            clat, clon = st.session_state["map_click"]
+            click_lat = map_data["last_clicked"]["lat"]
+            click_lon = map_data["last_clicked"]["lng"]
+
+            # Save click
+            st.session_state["map_click"] = (click_lat, click_lon)
 
             from src.places import google_nearby_restaurants
 
-            # Force re-search every time the user clicks the map
             with st.spinner("🔍 Finding restaurants near this location…"):
-                nearby = google_nearby_restaurants(clat, clon)
+                nearby = google_nearby_restaurants(click_lat, click_lon)
 
-            # Store the new results
             st.session_state["google_nearby"] = nearby
-
-            # Clear previous selected restaurant
             st.session_state["google_restaurant_nearby"] = None
 
+            st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
+
+            
 
         # 2. Render blue markers (even if search didn’t run this click)
         if st.session_state.get("google_nearby"):
