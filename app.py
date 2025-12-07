@@ -333,8 +333,8 @@ with left_col:
             click_lat = map_data["last_clicked"]["lat"]
             click_lon = map_data["last_clicked"]["lng"]
 
-            click_lat = round(click_lat, 5)
-            click_lon = round(click_lon, 5)
+            # click_lat = round(click_lat, 5)
+            # click_lon = round(click_lon, 5)
 
             st.session_state["map_click"] = (click_lat, click_lon)
 
