@@ -173,10 +173,35 @@ with left_col:
         # -------------------------------------------------
         # 1. Create map centered on filtered dataset
         # -------------------------------------------------
-        center_lat = df_filtered["latitude"].mean()
-        center_lon = df_filtered["longitude"].mean()
+        # --- Determine map center ---
+        default_center = [
+            df_filtered["latitude"].mean(),
+            df_filtered["longitude"].mean()
+        ]
 
-        m = folium.Map(location=[center_lat, center_lon], zoom_start=12)
+        center = st.session_state.get("map_center", default_center)
+        zoom = st.session_state.get("map_zoom", 12)
+
+        m = folium.Map(location=center, zoom_start=zoom)
+
+        
+        # --- Register custom map panes (ensures Google markers are on top) ---
+        m.get_root().html.add_child(folium.Element("""
+        <style>
+            .leaflet-interactive { pointer-events: auto !important; }
+        </style>
+        """))
+
+        # Create custom panes in JS
+        m.get_root().script.add_child(folium.Element("""
+        var datasetPane = map.createPane('dataset_markers');
+        datasetPane.style.zIndex = 200;
+
+        var googlePane = map.createPane('google_markers');
+        googlePane.style.zIndex = 600;
+        googlePane.style.pointerEvents = 'auto';
+        """))
+
 
         # -------------------------------------------------
         # 2. Add dataset restaurants to the map
@@ -202,6 +227,8 @@ with left_col:
                 fill_opacity=0.8
             )
             marker.add_to(m)
+            marker.options = {"pane": "dataset_markers"}
+
 
 
 
@@ -263,6 +290,8 @@ with left_col:
                     fill=True,
                     fill_opacity=0.9
                 )
+                marker.options = {"pane": "google_markers"}
+
 
                 # Hover label
                 folium.Tooltip(tooltip_text).add_to(marker)
@@ -288,9 +317,18 @@ with left_col:
             returned_objects=["last_clicked"]
         )
 
+        # --- Save map state ---
+        if map_data:
+            if "center" in map_data:
+                st.session_state["map_center"] = map_data["center"]
+            if "zoom" in map_data:
+                st.session_state["map_zoom"] = map_data["zoom"]
+
+
         # -------------------------------------------------
         # 5. Detect map click
         # -------------------------------------------------
+
         if map_data and map_data.get("last_clicked"):
             click_lat = map_data["last_clicked"]["lat"]
             click_lon = map_data["last_clicked"]["lng"]
@@ -298,10 +336,11 @@ with left_col:
             click_lat = round(click_lat, 5)
             click_lon = round(click_lon, 5)
 
-
             st.session_state["map_click"] = (click_lat, click_lon)
-            # Clear Google Search result when user interacts with map
-            st.session_state["google_restaurant"] = None
+
+            # Only clear selection if user clicks OUTSIDE Google marker regions
+            if not st.session_state.get("google_restaurant_nearby"):
+                st.session_state["google_restaurant"] = None
 
             st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
 
