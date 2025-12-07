@@ -192,32 +192,7 @@ with left_col:
 
         m = folium.Map(location=center, zoom_start=zoom)
 
-        # -------------------------------------------------
-        # 1B. Register custom map panes
-        # -------------------------------------------------
-        pane_css = """
-        <style>
-            .leaflet-pane { z-index: 1; }
-            .leaflet-control { z-index: 9999 !important; }
-
-            #map .leaflet-pane.dataset_markers { z-index: 200; }
-            #map .leaflet-pane.google_markers { z-index: 600; }
-        </style>
-        """
-        m.get_root().html.add_child(folium.Element(pane_css))
-
-        pane_js = """
-        <script>
-            var datasetPane = document.querySelector('.leaflet-map-pane')
-                .appendChild(document.createElement('div'));
-            datasetPane.className = 'leaflet-pane dataset_markers';
-
-            var googlePane = document.querySelector('.leaflet-map-pane')
-                .appendChild(document.createElement('div'));
-            googlePane.className = 'leaflet-pane google_markers';
-        </script>
-        """
-        m.get_root().html.add_child(folium.Element(pane_js))
+        
 
         # -------------------------------------------------
         # 2. Base dataset markers
