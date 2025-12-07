@@ -302,15 +302,26 @@ with left_col:
             width="100%",
             height=500,
             key="main_map",
-            returned_objects=["last_clicked"]
+            returned_objects=[
+                "last_clicked",
+                "center",
+                "zoom",
+                "bounds"
+            ]
         )
 
         # --- Save map state ---
+        # --- Save map state ---
         if map_data:
-            if "center" in map_data:
-                st.session_state["map_center"] = map_data["center"]
-            if "zoom" in map_data:
-                st.session_state["map_zoom"] = map_data["zoom"]
+            center = map_data.get("center")
+            zoom = map_data.get("zoom")
+
+            if center:
+                st.session_state["map_center"] = [center["lat"], center["lng"]]
+
+            if zoom:
+                st.session_state["map_zoom"] = zoom
+
 
 
         # -------------------------------------------------
