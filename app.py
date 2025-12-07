@@ -173,7 +173,6 @@ with left_col:
         # -------------------------------------------------
         # 1. Create map centered on filtered dataset
         # -------------------------------------------------
-        # --- Determine map center ---
         default_center = [
             df_filtered["latitude"].mean(),
             df_filtered["longitude"].mean()
@@ -184,18 +183,9 @@ with left_col:
 
         m = folium.Map(location=center, zoom_start=zoom)
 
-        
-        # --- Register custom map panes (ensures Google markers are on top) ---
-        # --- SAFE: Add custom map panes for layering ---
-        
-        
-
-
-
         # -------------------------------------------------
         # 2. Add dataset restaurants to the map
         # -------------------------------------------------
-        # Limit markers for performance
         MAX_MARKERS = 2000
         df_for_map = df_filtered.head(MAX_MARKERS)
 
@@ -216,21 +206,12 @@ with left_col:
                 fill_opacity=0.8
             )
             marker.add_to(m)
-            # marker.options = {"pane": "dataset_markers"}
-
-
-
 
         # -------------------------------------------------
-        # Google Nearby Restaurants (Step 13) — FINAL
+        # 3. Google Nearby - draw EXISTING blue markers
         # -------------------------------------------------
         nearby = []
 
-        # Only run nearby search if user clicked and NOT selecting a restaurant right now
-        
-
-
-        # 2. Render blue markers (even if search didn’t run this click)
         if st.session_state.get("google_nearby"):
             for place in st.session_state["google_nearby"]:
                 plat = place["geometry"]["location"]["lat"]
@@ -238,16 +219,12 @@ with left_col:
                 name = place.get("name", "Unknown")
                 pid = place.get("place_id")
 
-                # Is this the SELECTED nearby restaurant?
                 selected = (
                     st.session_state.get("google_restaurant_nearby") and
                     st.session_state["google_restaurant_nearby"].get("place_id") == pid
                 )
 
-                # Sticky tooltip when selected
                 tooltip_text = f"⭐ {name}" if selected else name
-
-                # Larger marker if selected
                 radius = 8 if selected else 5
                 color = "#ff8800" if selected else "#1e90ff"
 
@@ -266,15 +243,8 @@ with left_col:
                     fill=True,
                     fill_opacity=0.9
                 )
-
-
-                # Hover label
                 folium.Tooltip(tooltip_text).add_to(marker)
-
                 marker.add_to(m)
-                # marker.options = {"pane": "google_markers"}
-                # store metadata
-                marker.place_id = pid
 
         # -------------------------------------------------
         # 4. Render Folium map
@@ -292,30 +262,38 @@ with left_col:
             ]
         )
 
-        # Run Google Nearby ONLY on a *real* click (not zoom)
-        if (
-            map_data
-            and map_data.get("last_clicked")  # real click
-        ):
+        # -------------------------------------------------
+        # 5. Handle clicks + Google Nearby (ONLY on new click)
+        # -------------------------------------------------
+        # previous click to compare with
+        prev_click = st.session_state.get("map_click")
+
+        if map_data and map_data.get("last_clicked"):
             click_lat = map_data["last_clicked"]["lat"]
             click_lon = map_data["last_clicked"]["lng"]
+            new_click = (click_lat, click_lon)
 
-            # Save click
-            st.session_state["map_click"] = (click_lat, click_lon)
+            # Only call Google API if the user clicked a NEW point
+            if new_click != prev_click:
+                st.session_state["map_click"] = new_click
 
-            from src.places import google_nearby_restaurants
+                from src.places import google_nearby_restaurants
 
-            with st.spinner("🔍 Finding restaurants near this location…"):
-                nearby = google_nearby_restaurants(click_lat, click_lon)
+                with st.spinner("🔍 Finding restaurants near this location…"):
+                    nearby = google_nearby_restaurants(click_lat, click_lon)
 
-            st.session_state["google_nearby"] = nearby
-            st.session_state["google_restaurant_nearby"] = None
+                st.session_state["google_nearby"] = nearby
+                st.session_state["google_restaurant_nearby"] = None
 
-            st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
+                # If user was focused on a dataset restaurant, clear it
+                if not st.session_state.get("google_restaurant_nearby"):
+                    st.session_state["google_restaurant"] = None
 
+                st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
 
-        
-        # --- Save map state ---
+        # -------------------------------------------------
+        # 6. Save map state (center + zoom)
+        # -------------------------------------------------
         if map_data:
             center = map_data.get("center")
             zoom = map_data.get("zoom")
@@ -326,29 +304,8 @@ with left_col:
             if zoom:
                 st.session_state["map_zoom"] = zoom
 
-
-
-        # -------------------------------------------------
-        # 5. Detect map click
-        # -------------------------------------------------
-
-        if map_data and map_data.get("last_clicked"):
-            click_lat = map_data["last_clicked"]["lat"]
-            click_lon = map_data["last_clicked"]["lng"]
-
-            # click_lat = round(click_lat, 5)
-            # click_lon = round(click_lon, 5)
-
-            st.session_state["map_click"] = (click_lat, click_lon)
-
-            # Only clear selection if user clicks OUTSIDE Google marker regions
-            if not st.session_state.get("google_restaurant_nearby"):
-                st.session_state["google_restaurant"] = None
-
-            st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
-
     # -------------------------------------------------
-    # 6. Restaurant table
+    # 7. Restaurant table
     # -------------------------------------------------
     st.subheader("Restaurant List")
     st.caption("Filtered view based on your selections in the sidebar.")
