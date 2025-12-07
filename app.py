@@ -227,7 +227,13 @@ with left_col:
         nearby = []
 
         # Only run nearby search if user clicked and NOT selecting a restaurant right now
-        if "map_click" in st.session_state and st.session_state["map_click"] is not None:
+        # Only treat true clicks as map clicks
+        if (
+            "map_click" in st.session_state 
+            and st.session_state["map_click"] is not None
+            and map_data 
+            and map_data.get("last_clicked")  # prevents zoom events from being treated as clicks
+        ):
             clat, clon = st.session_state["map_click"]
 
             from src.places import google_nearby_restaurants
