@@ -186,21 +186,32 @@ with left_col:
 
         
         # --- Register custom map panes (ensures Google markers are on top) ---
-        m.get_root().html.add_child(folium.Element("""
+        # --- SAFE: Add custom map panes for layering ---
+        pane_css = """
         <style>
-            .leaflet-interactive { pointer-events: auto !important; }
+            .leaflet-pane { z-index: 1; }
+            .leaflet-control { z-index: 9999 !important; }
+
+            #map .leaflet-pane.dataset_markers { z-index: 200; }
+            #map .leaflet-pane.google_markers { z-index: 600; }
         </style>
-        """))
+        """
 
-        # Create custom panes in JS
-        m.get_root().script.add_child(folium.Element("""
-        var datasetPane = map.createPane('dataset_markers');
-        datasetPane.style.zIndex = 200;
+        m.get_root().html.add_child(folium.Element(pane_css))
 
-        var googlePane = map.createPane('google_markers');
-        googlePane.style.zIndex = 600;
-        googlePane.style.pointerEvents = 'auto';
-        """))
+        # Create panes (safe inline JS)
+        pane_js = """
+        <script>
+            var datasetPane = document.querySelector('.leaflet-map-pane').appendChild(document.createElement('div'));
+            datasetPane.className = 'leaflet-pane dataset_markers';
+
+            var googlePane = document.querySelector('.leaflet-map-pane').appendChild(document.createElement('div'));
+            googlePane.className = 'leaflet-pane google_markers';
+        </script>
+        """
+
+        m.get_root().html.add_child(folium.Element(pane_js))
+
 
 
         # -------------------------------------------------
