@@ -258,7 +258,6 @@ with left_col:
                 st.session_state["google_restaurant_nearby"] = None
                 st.session_state["google_restaurant"] = None
 
-                st.rerun()
 
 
 
