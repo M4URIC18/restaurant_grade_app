@@ -606,27 +606,32 @@ st.header("📊 Insights")
 st.subheader("Grade Distribution")
 
 if "grade" in df_filtered.columns and len(df_filtered) > 0:
+
+    # Build dataframe manually (prevents duplicate column names)
     grade_counts = (
         df_filtered["grade"]
         .value_counts()
         .reset_index()
-        .rename(columns={"index": "grade", "grade": "count"})
     )
+    grade_counts.columns = ["grade", "count"]  # FORCE unique names
 
-    chart = (
+    import altair as alt
+
+    pie = (
         alt.Chart(grade_counts)
         .mark_arc()
         .encode(
-            theta="count:Q",
-            color="grade:N",
+            theta=alt.Theta("count:Q"),
+            color=alt.Color("grade:N"),
             tooltip=["grade:N", "count:Q"]
         )
     )
 
-    st.altair_chart(chart, use_container_width=True)
+    st.altair_chart(pie, use_container_width=True)
 
 else:
     st.info("No grade data available for the current filter.")
+
 
 
 
