@@ -451,7 +451,7 @@ with right_col:
                 st.write(f"{g_label}: {p * 100:.1f}%")
 
             st.session_state["map_click"] = None
-            return
+            st.stop()
 
     # ============================================================
     # PRIORITY 3 — Click on map without selecting any marker
