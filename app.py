@@ -321,6 +321,11 @@ with left_col:
 # ===========================
 # RIGHT: Inspect & Predict
 # ===========================
+if st.session_state.get("right_col_done"):
+    st.session_state["right_col_done"] = False
+    st.rerun()
+
+
 with right_col:
     st.subheader(" Inspect & Predict")
 
@@ -332,7 +337,8 @@ with right_col:
         st.info("Select a restaurant or click the map to begin.")
         st.session_state["just_selected_restaurant"] = False
         st.session_state["last_processed_click"] = None
-        st.stop()
+        st.session_state["right_col_done"] = True
+        st.rerun()
 
     clat, clon = click
 
@@ -400,7 +406,8 @@ with right_col:
 
             # Clear click so it doesn't reprocess
             st.session_state["map_click"] = None
-            st.stop()
+            st.session_state["right_col_done"] = True
+            st.rerun()
 
     # ============================================================
     # PRIORITY 2 — Google Nearby (Google Mode)
@@ -451,7 +458,8 @@ with right_col:
                 st.write(f"{g_label}: {p * 100:.1f}%")
 
             st.session_state["map_click"] = None
-            st.stop()
+            st.session_state["right_col_done"] = True
+            st.rerun()
 
     # ============================================================
     # PRIORITY 3 — Click on map without selecting any marker
@@ -465,7 +473,8 @@ with right_col:
     st.info("Click a restaurant marker to see the predicted grade.")
 
     st.session_state["map_click"] = None
-    st.stop()
+    st.session_state["right_col_done"] = True
+    st.rerun()
 
 
 
