@@ -220,7 +220,27 @@ with left_col:
         google_data = st.session_state.get("google_nearby", [])
 
         # ---- 2. Build map (cached, fast) ----
-        m = build_map(center, zoom, df_for_map, google_data)
+        if "last_map_inputs" not in st.session_state:
+            st.session_state["last_map_inputs"] = None
+        if "last_map_object" not in st.session_state:
+            st.session_state["last_map_object"] = None
+
+        current_inputs = {
+            "center": tuple(center),
+            "zoom": zoom,
+            "df_hash": hash(tuple(df_for_map.index)),
+            "google_count": len(google_data),
+        }
+
+        if st.session_state["last_map_inputs"] != current_inputs:
+            # Rebuild map only when inputs CHANGE
+            m = build_map(center, zoom, df_for_map, google_data)
+            st.session_state["last_map_object"] = m
+            st.session_state["last_map_inputs"] = current_inputs
+        else:
+            # Reuse the old map (NO FLICKER)
+            m = st.session_state["last_map_object"]
+
 
         # ---- 3. Render map ----
         map_data = st_folium(
