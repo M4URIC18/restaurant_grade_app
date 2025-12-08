@@ -1,6 +1,3 @@
-@st.cache_data
-def load_filtered_data():
-    return df_filtered.copy()
 
 import streamlit as st
 import pandas as pd
@@ -37,6 +34,10 @@ from src.places import (
 )
 
 print(">>> APP STARTED")
+
+@st.cache_data
+def load_filtered_data():
+    return df_filtered.copy()
 
 
 # -------------------------------------------------
