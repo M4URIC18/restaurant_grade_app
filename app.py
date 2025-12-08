@@ -212,8 +212,18 @@ with left_col:
             df_filtered["latitude"].mean(),
             df_filtered["longitude"].mean()
         ]
-        center = st.session_state.get("map_center", default_center)
-        zoom = st.session_state.get("map_zoom", 12)
+        if st.session_state.get("just_selected_restaurant"):
+            # Use the stored center/zoom exactly — do NOT override
+            center = st.session_state["map_center"]
+            zoom = st.session_state["map_zoom"]
+
+            # Clear the flag after applying it
+            st.session_state["just_selected_restaurant"] = False
+        else:
+            # Normal behavior
+            center = st.session_state.get("map_center", default_center)
+            zoom = st.session_state.get("map_zoom", 12)
+
 
         # Prepare data for map
         df_for_map = df_filtered.head(2000)
