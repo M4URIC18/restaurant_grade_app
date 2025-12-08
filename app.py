@@ -152,7 +152,7 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
 
-@st.cache_data
+
 def build_map(center, zoom, df_for_map, google_nearby_data):
     import folium
 
@@ -264,26 +264,29 @@ with left_col:
 
 
         # ---- 2. Build map (cached, fast) ----
-        if "last_map_inputs" not in st.session_state:
-            st.session_state["last_map_inputs"] = None
-        if "last_map_object" not in st.session_state:
-            st.session_state["last_map_object"] = None
+        # if "last_map_inputs" not in st.session_state:
+        #     st.session_state["last_map_inputs"] = None
+        # if "last_map_object" not in st.session_state:
+        #     st.session_state["last_map_object"] = None
 
-        current_inputs = {
-            "center": tuple(center),
-            "zoom": zoom,
-            "df_count": len(df_for_map),
-            "google_count": len(google_data),
-        }
+        # current_inputs = {
+        #     "center": tuple(center),
+        #     "zoom": zoom,
+        #     "df_count": len(df_for_map),
+        #     "google_count": len(google_data),
+        # }
 
-        if st.session_state["last_map_inputs"] != current_inputs:
-            # Rebuild map only when inputs CHANGE
-            m = build_map(center, zoom, df_for_map, google_data)
-            st.session_state["last_map_object"] = m
-            st.session_state["last_map_inputs"] = current_inputs
-        else:
-            # Reuse the old map (NO FLICKER)
-            m = st.session_state["last_map_object"]
+        # if st.session_state["last_map_inputs"] != current_inputs:
+        #     # Rebuild map only when inputs CHANGE
+        #     m = build_map(center, zoom, df_for_map, google_data)
+        #     st.session_state["last_map_object"] = m
+        #     st.session_state["last_map_inputs"] = current_inputs
+        # else:
+        #     # Reuse the old map (NO FLICKER)
+        #     m = st.session_state["last_map_object"]
+
+        # ---- 2. Build map (always fresh Folium map) ----
+        m = build_map(center, zoom, df_for_map, google_data)
 
 
         # ---- 3. Render map ----
