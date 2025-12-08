@@ -340,15 +340,15 @@ with left_col:
         # -------------------------------------------------
         # 5. Save map center & zoom (for smoother reruns)
         # -------------------------------------------------
-        if map_data:
-            new_center = map_data.get("center")
-            new_zoom = map_data.get("zoom")
+        # if map_data:
+        #     new_center = map_data.get("center")
+        #     new_zoom = map_data.get("zoom")
 
-            if new_center:
-                st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
+        #     if new_center:
+        #         st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
 
-            if new_zoom:
-                st.session_state["map_zoom"] = new_zoom
+        #     if new_zoom:
+        #         st.session_state["map_zoom"] = new_zoom
 
         # -------------------------------------------------
         # 6. Handle clicks + Google Nearby (ONLY on NEW click)
