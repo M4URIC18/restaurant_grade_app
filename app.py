@@ -1,23 +1,19 @@
-import streamlit as st
-import pandas as pd
-import folium
 import os
 import requests
+
+import pandas as pd
+import streamlit as st
+import folium
 import altair as alt
-
 from streamlit_folium import st_folium
-
-from src.utils import VIOLATION_SHORT, UNKNOWN_VIOLATION_LABEL
-
 
 from src.data_loader import get_data
 from src.predictor import predict_from_raw_restaurant
 from src.utils import (
     get_grade_color,
-    format_probabilities,
-    row_to_model_input,
     restaurant_popup_html,
-    normalize_text,
+    VIOLATION_SHORT,
+    UNKNOWN_VIOLATION_LABEL,
 )
 from src.places import (
     google_place_details,
@@ -27,43 +23,51 @@ from src.places import (
 )
 
 # -------------------------------------------------
-# 🔧 CLEAR SELECTIONS HELPER
+# 🔧 Session State Initialization
 # -------------------------------------------------
-def clear_all_selections():
-    st.session_state["google_restaurant"] = None
-    st.session_state["google_restaurant_nearby"] = None
-    st.session_state["map_click"] = None
-    st.session_state["google_nearby"] = []
-
-# -----------------------------
-# Session State Initialization
-# -----------------------------
 if "map_center" not in st.session_state:
-    st.session_state["map_center"] = (40.7128, -74.0060)  # NYC default
+    # Default to NYC
+    st.session_state["map_center"] = [40.7128, -74.0060]
 
 if "map_zoom" not in st.session_state:
-    st.session_state["map_zoom"] = 12  # default zoom
+    st.session_state["map_zoom"] = 12
 
 if "just_selected_restaurant" not in st.session_state:
     st.session_state["just_selected_restaurant"] = False
 
+if "map_click" not in st.session_state:
+    st.session_state["map_click"] = None
+
+if "last_processed_click" not in st.session_state:
+    st.session_state["last_processed_click"] = None
+
+if "google_nearby" not in st.session_state:
+    st.session_state["google_nearby"] = []
+
+if "google_restaurant_nearby" not in st.session_state:
+    st.session_state["google_restaurant_nearby"] = None
+
+if "google_mode" not in st.session_state:
+    st.session_state["google_mode"] = False
+
+if "prev_google_mode" not in st.session_state:
+    st.session_state["prev_google_mode"] = st.session_state["google_mode"]
+
 
 # -------------------------------------------------
-# Google API key (from Streamlit secrets)
+# 🔑 Google API key (from Streamlit secrets)
 # -------------------------------------------------
 GOOGLE_API_KEY = st.secrets.get("GOOGLE_MAPS_API_KEY")
-
 if not GOOGLE_API_KEY:
     st.warning(
         "⚠️ Google Maps API key not found. "
         "Add GOOGLE_MAPS_API_KEY to your .streamlit/secrets.toml and Streamlit Cloud secrets."
     )
 else:
-    # Make it available to other modules via environment variable
     os.environ["GOOGLE_MAPS_API_KEY"] = GOOGLE_API_KEY
 
 # -------------------------------------------------
-# Page config
+# 🧱 Page config
 # -------------------------------------------------
 st.set_page_config(
     page_title="CleanKitchen NYC",
@@ -73,46 +77,38 @@ st.set_page_config(
 
 st.title("CleanKitchen NYC")
 
-# You can keep these or comment them out if noisy
-st.write("🔑 Secret key exists:", bool(st.secrets.get("GOOGLE_MAPS_API_KEY")))
-st.write("🔑 OS env key exists:", bool(os.environ.get("GOOGLE_MAPS_API_KEY")))
-
 st.markdown(
     "Explore NYC restaurant inspections, neighborhood demographics, "
     "and **AI-powered grade predictions** based on real inspection data."
 )
 
 # -------------------------------------------------
-# Load data (cached)
+# 📥 Load & prepare data
 # -------------------------------------------------
-
 def load_app_data():
     df = get_data()
 
-
-    # Basic assumptions about columns
-    # Adjust if your col names differ
+    # Drop rows without coordinates (for the map)
     if "latitude" in df.columns and "longitude" in df.columns:
         df = df.dropna(subset=["latitude", "longitude"])
 
-    # Normalize some text fields for filters
+    # Normalize text fields
     df["borough"] = df["borough"].astype(str).str.strip().str.title()
-    df["cuisine_description"] = df["cuisine_description"].astype(str).str.strip().str.title()
+    df["cuisine_description"] = (
+        df["cuisine_description"].astype(str).str.strip().str.title()
+    )
 
     return df
 
 
 df = load_app_data()
 
-
-
 if df.empty:
     st.error("No data loaded. Please check your CSV files in the data/ folder.")
     st.stop()
 
-
 # -------------------------------------------------
-# SIDEBAR FILTERS
+# 🎚️ Sidebar Filters
 # -------------------------------------------------
 st.sidebar.header("🔎 Filter Restaurants")
 
@@ -120,7 +116,7 @@ st.sidebar.header("🔎 Filter Restaurants")
 boroughs = ["All"] + sorted(df["borough"].dropna().unique().tolist())
 borough_choice = st.sidebar.selectbox("Borough", boroughs, index=0)
 
-# ZIP filter (depends on borough choice)
+# ZIP filter (depends on borough)
 if borough_choice != "All":
     zip_candidates = df.loc[df["borough"] == borough_choice, "zipcode"].unique()
 else:
@@ -134,7 +130,7 @@ cuisine_list = sorted(df["cuisine_description"].dropna().unique().tolist())
 cuisine_choice = st.sidebar.multiselect(
     "Cuisine type",
     options=cuisine_list,
-    default=[]
+    default=[],
 )
 
 # Apply filters
@@ -151,308 +147,185 @@ if cuisine_choice:
 
 st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
+# -------------------------------------------------
+# 🗺️ Map Builder
+# -------------------------------------------------
+def build_map(center, zoom, df_for_map, google_nearby_data, google_mode: bool):
+    """
+    Build a fresh Folium map for each rerun.
 
-
-
-
-
-
-def build_map(center, zoom, df_for_map, google_nearby_data, google_mode):
-    import folium
-
-    # --- Always build a fresh map ---
+    - If google_mode == False → show dataset restaurants only.
+    - If google_mode == True  → show Google nearby restaurants only.
+    """
     m = folium.Map(location=center, zoom_start=zoom, control_scale=True)
 
-    # ==========================================================
-    # FIX #1 — Create FeatureGroups to prevent mutation errors
-    # ==========================================================
     dataset_fg = folium.FeatureGroup(name="Dataset Restaurants")
     google_fg = folium.FeatureGroup(name="Google Restaurants")
 
-    # ---------------------------
-    # Dataset markers
-    # ---------------------------
-    for _, row in df_for_map.iterrows():
-        lat = row["latitude"]
-        lon = row["longitude"]
-        grade = row.get("grade", "N/A")
-        color = get_grade_color(grade)
-        popup_html = restaurant_popup_html(row)
+    # Dataset markers (only if NOT in google mode)
+    if not google_mode:
+        for _, row in df_for_map.iterrows():
+            lat = row["latitude"]
+            lon = row["longitude"]
+            grade = row.get("grade", "N/A")
+            color = get_grade_color(grade)
+            popup_html = restaurant_popup_html(row)
 
-        folium.CircleMarker(
-            location=[lat, lon],
-            radius=4,
-            popup=folium.Popup(popup_html, max_width=250),
-            color=color,
-            fill=True,
-            fill_opacity=0.8,
-        ).add_to(dataset_fg)
+            folium.CircleMarker(
+                location=[lat, lon],
+                radius=4,
+                popup=folium.Popup(popup_html, max_width=250),
+                color=color,
+                fill=True,
+                fill_opacity=0.8,
+            ).add_to(dataset_fg)
 
-    # ---------------------------
-    # Google Places markers
-    # ---------------------------
-    for place in google_nearby_data:
-        plat = place["geometry"]["location"]["lat"]
-        plon = place["geometry"]["location"]["lng"]
-        name = place.get("name", "Unknown")
-        pid = place.get("place_id")
-
-        selected = (
-            st.session_state.get("google_restaurant_nearby")
-            and st.session_state["google_restaurant_nearby"].get("place_id") == pid
-        )
-
-        tooltip_text = f"⭐ {name}" if selected else name
-        radius = 8 if selected else 5
-        color = "#ff8800" if selected else "#1e90ff"
-
-        marker = folium.CircleMarker(
-            location=[plat, plon],
-            radius=radius,
-            popup=name,
-            color=color,
-            fill=True,
-            fill_opacity=0.9,
-        )
-        folium.Tooltip(tooltip_text).add_to(marker)
-        marker.add_to(google_fg)
-
-    # --- Add groups to the map (only AFTER fully built) ---
-    # Add only what matches the current mode
-    if google_mode:
-        google_fg.add_to(m)
-    else:
         dataset_fg.add_to(m)
 
+    # Google markers (only if in google mode)
+    if google_mode and google_nearby_data:
+        for place in google_nearby_data:
+            plat = place["geometry"]["location"]["lat"]
+            plon = place["geometry"]["location"]["lng"]
+            name = place.get("name", "Unknown")
+
+            folium.CircleMarker(
+                location=[plat, plon],
+                radius=6,
+                popup=name,
+                color="#1e90ff",
+                fill=True,
+                fill_opacity=0.9,
+            ).add_to(google_fg)
+
+        google_fg.add_to(m)
 
     return m
 
 
-
-
-
+# -------------------------------------------------
+# 📐 Distance helper
+# -------------------------------------------------
+def _dist2(lat1, lon1, lat2, lon2):
+    return (lat1 - lat2) ** 2 + (lon1 - lon2) ** 2
 
 
 # -------------------------------------------------
-# MAIN LAYOUT: Map (left) + Details/Prediction (right)
+# MAIN LAYOUT: Map (left) + Inspect/Prediction (right)
 # -------------------------------------------------
 left_col, right_col = st.columns([2, 1])
 
+# ===========================
+# LEFT: Map & Table
+# ===========================
 with left_col:
     st.subheader(" Map of Restaurants")
+
+    # Toggle Google mode
     google_mode = st.toggle("Enable Google Nearby Search", key="google_mode")
-    # Mode switch cleanup
-    if google_mode:
-        # Leaving dataset mode → clear dataset selection
-        st.session_state.pop("google_nearby", None)
-        st.session_state.pop("google_restaurant_nearby", None)
-        # dataset selection stays but won't be used
-    else:
-        # Leaving google mode → clear google selection
-        st.session_state.pop("google_restaurant", None)
-        st.session_state.pop("google_nearby", None)
-
-
+    prev_mode = st.session_state.get("prev_google_mode", google_mode)
+    if prev_mode != google_mode:
+        # Mode changed → reset click + nearby data
+        st.session_state["prev_google_mode"] = google_mode
+        st.session_state["map_click"] = None
+        st.session_state["last_processed_click"] = None
+        st.session_state["google_nearby"] = []
+        st.session_state["google_restaurant_nearby"] = None
 
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters.")
     else:
-        # ----------------------------------------------------
-        # 1. Compute default center (ONLY if we have no memory)
-        # ----------------------------------------------------
+        # 1. Default center based on filtered data
         default_center = [
             df_filtered["latitude"].mean(),
-            df_filtered["longitude"].mean()
+            df_filtered["longitude"].mean(),
         ]
 
-        # ----------------------------------------------------
-        # 2. Decide center & zoom (DO NOT override later)
-        # ----------------------------------------------------
-        
-        # CASE A — Just selected a restaurant → force zoom + center
+        # 2. Decide center & zoom
         if st.session_state.get("just_selected_restaurant"):
-
             center = st.session_state["map_center"]
             zoom = st.session_state["map_zoom"]
-
-            # Clear the flag AFTER using the values
             st.session_state["just_selected_restaurant"] = False
-
         else:
-            # CASE B — Normal view → keep last position or default
             center = st.session_state.get("map_center", default_center)
             zoom = st.session_state.get("map_zoom", 12)
 
-        # ⭐ IMPORTANT:
-        # From this point on, 
-        # DO NOT modify "center" or "zoom" anywhere else in the file!
-
-
-
-        # Prepare data for map
+        # 3. Prepare data for map
         df_for_map = df_filtered.head(2000)
         google_data = st.session_state.get("google_nearby", [])
 
-
-
-        # ---- 2. Build map (cached, fast) ----
-        # if "last_map_inputs" not in st.session_state:
-        #     st.session_state["last_map_inputs"] = None
-        # if "last_map_object" not in st.session_state:
-        #     st.session_state["last_map_object"] = None
-
-        # current_inputs = {
-        #     "center": tuple(center),
-        #     "zoom": zoom,
-        #     "df_count": len(df_for_map),
-        #     "google_count": len(google_data),
-        # }
-
-        # if st.session_state["last_map_inputs"] != current_inputs:
-        #     # Rebuild map only when inputs CHANGE
-        #     m = build_map(center, zoom, df_for_map, google_data)
-        #     st.session_state["last_map_object"] = m
-        #     st.session_state["last_map_inputs"] = current_inputs
-        # else:
-        #     # Reuse the old map (NO FLICKER)
-        #     m = st.session_state["last_map_object"]
-
-        # ---- 2. Build map (always fresh Folium map) ----
+        # 4. Build map
         m = build_map(center, zoom, df_for_map, google_data, google_mode)
 
-
-        # ---- 3. Render map ----
+        # 5. Render map
         map_data = st_folium(
             m,
             width="100%",
             height=500,
             key="main_map",
-            returned_objects=["last_clicked", "center", "zoom"]
-        )
-        
-
-        # ---- TABLE OF FILTERED RESTAURANTS ----
-        st.markdown("### Restaurants in this area")
-
-        # Choose the columns to display (cleaner)
-        cols = ["dba", "boro", "zipcode", "cuisine_description", "grade", "score"]
-
-        # Only show columns that exist
-        cols = [c for c in cols if c in df_filtered.columns]
-
-        # Show the table (interactive, scrollable)
-        st.dataframe(
-            df_filtered[cols].reset_index(drop=True),
-            use_container_width=True,
-            height=300
+            returned_objects=["last_clicked", "center", "zoom"],
         )
 
-
-
-        # -------------------------------------------------
-        # SMART ZOOM FREEZE — avoid rebuild only when zooming
-        # -------------------------------------------------
-        if map_data:
-            new_zoom = map_data.get("zoom")
-            new_click = map_data.get("last_clicked")
-
-            # If zoom changed AND no new click → it's a zoom gesture
-            # STOP ONLY IF user is manually zooming (not during selection click)
-            if (
-                new_zoom != zoom 
-                and new_click is None 
-                and not st.session_state.get("just_selected_restaurant")
-            ):
-                st.stop()
-
-
-
-
-
-        # ---- 4. Update center/zoom (SAFE: ignore zoom changes during zooming) ----
+        # 6. Update center/zoom based on user interactions
         if map_data:
             new_center = map_data.get("center")
             new_zoom = map_data.get("zoom")
 
-            # Only save center if user dragged (not zoom)
             if new_center and tuple(new_center.values()) != tuple(center):
                 st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
 
-            # DO NOT SAVE new zoom on every event, ONLY if user clicked a marker
-            # Save zoom only when the user manually zooms (not selection)
-            if (
-                new_zoom 
-                and not st.session_state.get("just_selected_restaurant")
-            ):
+            if new_zoom:
                 st.session_state["map_zoom"] = new_zoom
 
-
-
-        # ---- 5. Handle NEW clicks ONLY ----
-                # ---- 5. Handle NEW clicks ONLY ----
-        if google_mode and map_data and map_data.get("last_clicked"):
+        # 7. Handle map clicks
+        if map_data and map_data.get("last_clicked"):
             click = (
                 map_data["last_clicked"]["lat"],
-                map_data["last_clicked"]["lng"]
+                map_data["last_clicked"]["lng"],
             )
 
-            # Prevent repeated triggers from Streamlit-Folium
+            # Avoid reprocessing same click
             if st.session_state.get("last_processed_click") != click:
                 st.session_state["last_processed_click"] = click
                 st.session_state["map_click"] = click
 
-                with st.spinner("🔍 Searching nearby restaurants..."):
-                    places = google_nearby_restaurants(click[0], click[1])
+                if google_mode:
+                    # In Google mode: click fetches nearby restaurants
+                    with st.spinner("🔍 Searching nearby restaurants..."):
+                        places = google_nearby_restaurants(click[0], click[1])
+                    st.session_state["google_nearby"] = places
+                st.experimental_rerun()
 
-                st.session_state["google_nearby"] = places
-                st.session_state["google_restaurant_nearby"] = None
-                st.session_state["google_restaurant"] = None
+        # 8. Table of filtered restaurants
+        st.markdown("### Restaurants in this area")
 
-                # IMPORTANT: stop RIGHT COLUMN from running this cycle
-                st.rerun()
+        cols = ["dba", "boro", "borough", "zipcode", "cuisine_description", "grade", "score"]
+        cols = [c for c in cols if c in df_filtered.columns]
 
-        
+        st.dataframe(
+            df_filtered[cols].reset_index(drop=True),
+            use_container_width=True,
+            height=300,
+        )
 
-
-
-
-
-
-
-
+# ===========================
+# RIGHT: Inspect & Predict
+# ===========================
 with right_col:
     st.subheader(" Inspect & Predict")
 
     google_mode = st.session_state.get("google_mode", False)
+    has_click = st.session_state.get("map_click") is not None
 
-    import requests
-
-    # Safety defaults
-    st.session_state.setdefault("google_nearby", [])
-    st.session_state.setdefault("map_click", None)
-
-    has_click = (
-        st.session_state["map_click"] is not None
-    )
-
-    # Distance helper
-    def _dist2(lat1, lon1, lat2, lon2):
-        return (lat1 - lat2)**2 + (lon1 - lon2)**2
-
-
-    # =================================================
-    # PRIORITY 1 — Dataset restaurant (CSV) click
-    # =================================================
-    # =================================================
-    # PRIORITY 1 — Dataset restaurant (CSV) click
-    # =================================================
-    if has_click and len(df_filtered) > 0:
+    # -----------------------------------------
+    # PRIORITY 1 — Dataset restaurant (CSV) click (only in dataset mode)
+    # -----------------------------------------
+    if not google_mode and has_click and len(df_filtered) > 0:
         clat, clon = st.session_state["map_click"]
 
         closest_row = None
         min_ds_dist = float("inf")
 
-        # ENABLED: find nearest **dataset** restaurant to the click
         for _, row in df_filtered.iterrows():
             lat = row.get("latitude")
             lon = row.get("longitude")
@@ -460,14 +333,12 @@ with right_col:
                 continue
 
             d2 = _dist2(clat, clon, lat, lon)
-
             if d2 < min_ds_dist:
                 min_ds_dist = d2
                 closest_row = row
 
-        # If close to a dataset marker, select it
+        # Only select if click is actually near a dataset marker
         if closest_row is not None and min_ds_dist < 0.00002:
-
             st.session_state["just_selected_restaurant"] = True
 
             st.markdown("## 🍽️ Dataset Restaurant Selected")
@@ -486,7 +357,6 @@ with right_col:
             if score is not None:
                 st.write(f"**Score:** {score}")
 
-            # Make prediction input
             raw_restaurant = {
                 "borough": borough,
                 "zipcode": zipcode,
@@ -503,23 +373,20 @@ with right_col:
             st.markdown(
                 f"### ⭐ Predicted Grade: "
                 f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             st.markdown("#### Confidence")
             for g_label, p in probs.items():
-                st.write(f"{g_label}: {p*100:.1f}%")
+                st.write(f"{g_label}: {p * 100:.1f}%")
 
             st.markdown("---")
             st.stop()
 
-
-    
-
-    # =================================================
-    # PRIORITY 2 — Google Nearby restaurant click (blue dot)
-    # =================================================
-    if has_click and st.session_state.get("google_nearby"):
+    # -----------------------------------------
+    # PRIORITY 2 — Google Nearby restaurant click (blue dot) in Google mode
+    # -----------------------------------------
+    if google_mode and has_click and st.session_state.get("google_nearby"):
         clat, clon = st.session_state["map_click"]
 
         closest_place = None
@@ -533,9 +400,8 @@ with right_col:
                 min_nb_dist = d2
                 closest_place = place
 
-        # Close to a blue marker → select nearby restaurant
+        # If click is close to a Google marker
         if closest_place is not None and min_nb_dist < 0.00002:
-
             st.session_state["just_selected_restaurant"] = True
 
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
@@ -553,7 +419,6 @@ with right_col:
             st.write(f"**Borough:** {norm.get('boro', 'Unknown')}")
             st.write(f"**Cuisine:** {cuisine}")
 
-            # Predict
             pred = predict_from_raw_restaurant(norm)
             grade = pred["grade"]
             probs = pred["probabilities"]
@@ -562,83 +427,57 @@ with right_col:
             st.markdown(
                 f"### ⭐ Predicted Grade: "
                 f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True
+                unsafe_allow_html=True,
             )
 
             st.markdown("#### Confidence")
             for g_label, p in probs.items():
-                st.write(f"{g_label}: {p*100:.1f}%")
+                st.write(f"{g_label}: {p * 100:.1f}%")
 
             st.markdown("---")
             st.stop()
 
-
-    # =================================================
-    # PRIORITY 3 — Plain map click (no prediction)
-    # =================================================
+    # -----------------------------------------
+    # PRIORITY 3 — Plain map click (no clear restaurant match)
+    # -----------------------------------------
     if has_click:
         clat, clon = st.session_state["map_click"]
 
         st.markdown("## 📍 Map Click Detected")
 
-        API_KEY = st.secrets["GOOGLE_MAPS_API_KEY"]
-        geo_url = (
-            f"https://maps.googleapis.com/maps/api/geocode/json"
-            f"?latlng={clat},{clon}&key={API_KEY}"
-        )
-        geo_data = requests.get(geo_url).json()
+        # Use our helper reverse_geocode instead of raw requests
+        zipcode, borough, address = reverse_geocode(clat, clon)
 
-        zipcode = None
-        borough = None
-        address = None
+        st.write(f"**Address:** {address or 'Unknown'}")
+        st.write(f"**ZIP:** {zipcode or 'Unknown'}")
+        st.write(f"**Borough:** {borough or 'Unknown'}")
 
-        if geo_data.get("results"):
-            res = geo_data["results"][0]
-            address = res.get("formatted_address", "")
-            for comp in res["address_components"]:
-                if "postal_code" in comp["types"]:
-                    zipcode = comp["long_name"]
-                if comp["long_name"].lower() in [
-                    "manhattan", "bronx", "brooklyn", "queens", "staten island"
-                ]:
-                    borough = comp["long_name"].title()
-
-        st.write(f"**Address:** {address}")
-        st.write(f"**ZIP:** {zipcode}")
-        st.write(f"**Borough:** {borough}")
-
-        st.info("Click a restaurant to see the predicted grade.")
+        st.info("Click a restaurant marker to see the predicted grade.")
         st.markdown("---")
         st.stop()
 
+    # -----------------------------------------
+    # PRIORITY 4 — No click yet
+    # -----------------------------------------
+    st.info("Select a restaurant (dataset marker or blue marker) or click the map to begin.")
 
-    # =================================================
-    # PRIORITY 4 — Default
-    # =================================================
-    st.info("Select a restaurant (dataset or blue marker) or click the map to begin.")
-
-
-
+# -------------------------------------------------
+# 📊 Insights Section
+# -------------------------------------------------
 st.markdown("---")
 st.header("📊 Insights")
 
-
 col1, col2 = st.columns(2)
+
 # ---- Grade Distribution (Pie Chart) ----
-
 with col1:
-
     if "grade" in df_filtered.columns and len(df_filtered) > 0:
-
-        # Build dataframe manually (prevents duplicate column names)
         grade_counts = (
             df_filtered["grade"]
             .value_counts()
             .reset_index()
         )
-        grade_counts.columns = ["grade", "count"]  # FORCE unique names
-
-        import altair as alt
+        grade_counts.columns = ["grade", "count"]
 
         pie = (
             alt.Chart(grade_counts)
@@ -646,38 +485,28 @@ with col1:
             .encode(
                 theta=alt.Theta("count:Q"),
                 color=alt.Color("grade:N"),
-                tooltip=["grade:N", "count:Q"]
+                tooltip=["grade:N", "count:Q"],
             )
         )
 
         st.altair_chart(pie, use_container_width=True)
-
     else:
         st.info("No grade data available for the current filter.")
 
-
+# ---- Most Common Violations (Bar Chart) ----
 with col2:
-    # ---- Most Common Violations ----
-    
-
     if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
-
-        # Build violation count table (SAFE: enforce unique names)
         violation_counts = (
             df_filtered["violation_code"]
             .value_counts()
             .reset_index()
         )
-
-        # FORCE unique column names (prevents Narwhals DuplicateError)
         violation_counts.columns = ["violation_code", "count"]
 
-        # Add short descriptions (from utils.py)
         violation_counts["description"] = violation_counts["violation_code"].apply(
             lambda code: VIOLATION_SHORT.get(code, UNKNOWN_VIOLATION_LABEL)
         )
 
-        # Only top 10
         violation_counts = violation_counts.head(10)
 
         if len(violation_counts) == 0:
@@ -693,23 +522,20 @@ with col2:
                     tooltip=[
                         "violation_code:N",
                         "description:N",
-                        "count:Q"
+                        "count:Q",
                     ],
                 )
                 .properties(height=350)
             )
 
             st.altair_chart(chart_violations, use_container_width=True)
-
     else:
         st.info("No violation data available for this filter.")
 
-
-
-
-# ---- Best & Worst Cuisines (Data Prep) ----
+# ---- Best & Worst Cuisines (Side-by-side Bar Charts) ----
 st.subheader("Best & Worst Cuisine Types")
 
+cuisine_scores = None
 best_cuisines = None
 worst_cuisines = None
 
@@ -730,12 +556,10 @@ else:
     st.info("No cuisine data available for this filter.")
     cuisine_scores = None
 
-
-# ---- Show Charts Side by Side ----
 if cuisine_scores is not None:
     c1, c2 = st.columns(2)
 
-    # ----------------- Best -----------------
+    # Best cuisines
     with c1:
         st.markdown("#### 🥇 Top 10 Best Cuisines")
 
@@ -756,7 +580,7 @@ if cuisine_scores is not None:
 
         st.altair_chart(chart_best, use_container_width=True)
 
-    # ----------------- Worst -----------------
+    # Worst cuisines
     with c2:
         st.markdown("#### 🚨 Top 10 Worst Cuisines")
 
@@ -776,6 +600,5 @@ if cuisine_scores is not None:
         )
 
         st.altair_chart(chart_worst, use_container_width=True)
-
 else:
     st.info("No cuisine ranking to display.")
