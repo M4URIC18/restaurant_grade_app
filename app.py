@@ -3,7 +3,7 @@ import pandas as pd
 import folium
 import os
 import requests
-import matplotlib.pyplot as plt
+import altair as alt
 
 
 from streamlit_folium import st_folium
@@ -602,21 +602,29 @@ st.markdown("---")
 st.header("📊 Insights")
 
 # ---- Grade Distribution (Pie Chart) ----
+
 st.subheader("Grade Distribution")
 
 if "grade" in df_filtered.columns and len(df_filtered) > 0:
-    grade_counts = df_filtered["grade"].value_counts()
-
-    fig, ax = plt.subplots()
-    ax.pie(
-        grade_counts,
-        labels=grade_counts.index,
-        autopct="%1.1f%%",
-        startangle=90
+    grade_counts = (
+        df_filtered["grade"]
+        .value_counts()
+        .reset_index()
+        .rename(columns={"index": "grade", "grade": "count"})
     )
-    ax.axis("equal")  # Ensures circle shape
 
-    st.pyplot(fig)
+    chart = (
+        alt.Chart(grade_counts)
+        .mark_arc()
+        .encode(
+            theta="count:Q",
+            color="grade:N",
+            tooltip=["grade:N", "count:Q"]
+        )
+    )
+
+    st.altair_chart(chart, use_container_width=True)
+
 else:
     st.info("No grade data available for the current filter.")
 
