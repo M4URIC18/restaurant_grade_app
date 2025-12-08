@@ -309,6 +309,25 @@ with left_col:
             returned_objects=["last_clicked", "center", "zoom"]
         )
         
+
+        # ---- TABLE OF FILTERED RESTAURANTS ----
+        st.markdown("### Restaurants in this area")
+
+        # Choose the columns to display (cleaner)
+        cols = ["dba", "boro", "zipcode", "cuisine_description", "grade", "score"]
+
+        # Only show columns that exist
+        cols = [c for c in cols if c in df_filtered.columns]
+
+        # Show the table (interactive, scrollable)
+        st.dataframe(
+            df_filtered[cols].reset_index(drop=True),
+            use_container_width=True,
+            height=300
+        )
+
+
+
         # -------------------------------------------------
         # SMART ZOOM FREEZE — avoid rebuild only when zooming
         # -------------------------------------------------
@@ -370,6 +389,8 @@ with left_col:
 
                 # IMPORTANT: stop RIGHT COLUMN from running this cycle
                 st.rerun()
+
+        
 
 
 
