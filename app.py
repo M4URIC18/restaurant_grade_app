@@ -31,6 +31,19 @@ def clear_all_selections():
     st.session_state["map_click"] = None
     st.session_state["google_nearby"] = []
 
+# -----------------------------
+# Session State Initialization
+# -----------------------------
+if "map_center" not in st.session_state:
+    st.session_state["map_center"] = (40.7128, -74.0060)  # NYC default
+
+if "map_zoom" not in st.session_state:
+    st.session_state["map_zoom"] = 12  # default zoom
+
+if "just_selected_restaurant" not in st.session_state:
+    st.session_state["just_selected_restaurant"] = False
+
+
 # -------------------------------------------------
 # Google API key (from Streamlit secrets)
 # -------------------------------------------------
