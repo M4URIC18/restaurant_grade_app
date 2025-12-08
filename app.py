@@ -593,3 +593,64 @@ with right_col:
     # PRIORITY 4 — Default
     # =================================================
     st.info("Select a restaurant (dataset or blue marker) or click the map to begin.")
+
+
+
+st.markdown("---")
+st.header("📊 Insights")
+
+# ---- Grade Distribution (Pie Chart) ----
+st.subheader("Grade Distribution")
+
+if "grade" in df_filtered.columns and len(df_filtered) > 0:
+    grade_counts = df_filtered["grade"].value_counts()
+
+    fig, ax = plt.subplots()
+    ax.pie(
+        grade_counts,
+        labels=grade_counts.index,
+        autopct="%1.1f%%",
+        startangle=90
+    )
+    ax.axis("equal")  # Ensures circle shape
+
+    st.pyplot(fig)
+else:
+    st.info("No grade data available for the current filter.")
+
+
+
+# ---- Best & Worst Cuisines (Bar Charts) ----
+st.subheader("Best & Worst Cuisine Types")
+
+if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
+    # Compute average score per cuisine
+    cuisine_scores = (
+        df_filtered.groupby("cuisine_description")["score"]
+        .mean()
+        .sort_values()
+    )
+
+    # Best (lowest score)
+    best_cuisines = cuisine_scores.head(10)
+
+    # Worst (highest score)
+    worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
+
+else:
+    st.info("Not enough cuisine data for ranking.")
+    cuisine_scores = None
+
+
+
+# ---- Top 10 Best Cuisines (Bar Chart) ----
+if cuisine_scores is not None and len(best_cuisines) > 0:
+    st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
+
+    st.bar_chart(best_cuisines)
+    
+# ---- Top 10 Worst Cuisines (Bar Chart) ----
+if cuisine_scores is not None and len(worst_cuisines) > 0:
+    st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
+
+    st.bar_chart(worst_cuisines)
