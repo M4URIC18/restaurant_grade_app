@@ -603,87 +603,119 @@ with right_col:
 st.markdown("---")
 st.header("📊 Insights")
 
+
+col1, col2 = st.columns(2)
 # ---- Grade Distribution (Pie Chart) ----
 
-st.subheader("Grade Distribution")
+with col1:
 
-if "grade" in df_filtered.columns and len(df_filtered) > 0:
+    if "grade" in df_filtered.columns and len(df_filtered) > 0:
 
-    # Build dataframe manually (prevents duplicate column names)
-    grade_counts = (
-        df_filtered["grade"]
-        .value_counts()
-        .reset_index()
-    )
-    grade_counts.columns = ["grade", "count"]  # FORCE unique names
-
-    import altair as alt
-
-    pie = (
-        alt.Chart(grade_counts)
-        .mark_arc()
-        .encode(
-            theta=alt.Theta("count:Q"),
-            color=alt.Color("grade:N"),
-            tooltip=["grade:N", "count:Q"]
+        # Build dataframe manually (prevents duplicate column names)
+        grade_counts = (
+            df_filtered["grade"]
+            .value_counts()
+            .reset_index()
         )
-    )
+        grade_counts.columns = ["grade", "count"]  # FORCE unique names
 
-    st.altair_chart(pie, use_container_width=True)
+        import altair as alt
 
-else:
-    st.info("No grade data available for the current filter.")
+        pie = (
+            alt.Chart(grade_counts)
+            .mark_arc()
+            .encode(
+                theta=alt.Theta("count:Q"),
+                color=alt.Color("grade:N"),
+                tooltip=["grade:N", "count:Q"]
+            )
+        )
+
+        st.altair_chart(pie, use_container_width=True)
+
+    else:
+        st.info("No grade data available for the current filter.")
+
+
+with col2:
+    # ---- Most Common Violations ----
+    
+
+    if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
+
+        # Build violation count table (SAFE: enforce unique names)
+        violation_counts = (
+            df_filtered["violation_code"]
+            .value_counts()
+            .reset_index()
+        )
+
+        # FORCE unique column names (prevents Narwhals DuplicateError)
+        violation_counts.columns = ["violation_code", "count"]
+
+        # Add short descriptions (from utils.py)
+        violation_counts["description"] = violation_counts["violation_code"].apply(
+            lambda code: VIOLATION_SHORT.get(code, UNKNOWN_VIOLATION_LABEL)
+        )
+
+        # Only top 10
+        violation_counts = violation_counts.head(10)
+
+        if len(violation_counts) == 0:
+            st.info("No violation data available for this filter.")
+        else:
+            chart_violations = (
+                alt.Chart(violation_counts)
+                .mark_bar()
+                .encode(
+                    x=alt.X("violation_code:N", sort="-y", title="Violation Code"),
+                    y=alt.Y("count:Q", title="Count"),
+                    color=alt.Color("violation_code:N", legend=None),
+                    tooltip=[
+                        "violation_code:N",
+                        "description:N",
+                        "count:Q"
+                    ],
+                )
+                .properties(height=350)
+            )
+
+            st.altair_chart(chart_violations, use_container_width=True)
+
+    else:
+        st.info("No violation data available for this filter.")
 
 
 
 
-# ---- Best & Worst Cuisines (Bar Charts) ----
+
+# ---- Best & Worst Cuisines (Data Prep) ----
 st.subheader("Best & Worst Cuisine Types")
 
 if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
-    # Compute average score per cuisine
     cuisine_scores = (
         df_filtered.groupby("cuisine_description")["score"]
         .mean()
         .sort_values()
     )
 
-    # Best (lowest score)
-    best_cuisines = cuisine_scores.head(10)
-
-    # Worst (highest score)
-    worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
+    if len(cuisine_scores) == 0:
+        st.info("No cuisine data available for this filter.")
+        cuisine_scores = None
+    else:
+        best_cuisines = cuisine_scores.head(10)
+        worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
 
 else:
-    st.info("Not enough cuisine data for ranking.")
+    st.info("No cuisine data available for this filter.")
     cuisine_scores = None
 
 
+c1, c2 = st.columns(2)
 
-
-# ---- Best & Worst Cuisines (Bar Charts) ----
-st.subheader("Best & Worst Cuisine Types")
-
-if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
-    # Compute average score per cuisine
-    cuisine_scores = (
-        df_filtered.groupby("cuisine_description")["score"]
-        .mean()
-        .sort_values()
-    )
-
-    # If no cuisine left after filtering
-    if len(cuisine_scores) == 0:
-        st.info("No cuisine data available for this filter.")
-    else:
-        # Best (lowest score)
-        best_cuisines = cuisine_scores.head(10)
-
-        # Worst (highest score)
-        worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
-
-        # --------------- Best Cuisines ---------------
-        st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
+with c1:
+    if cuisine_scores is not None:
+        st.markdown("#### 🥇 Top 10 Best Cuisines")
 
         best_df = best_cuisines.reset_index()
         best_df.columns = ["cuisine_description", "score"]
@@ -697,13 +729,15 @@ if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
                 color=alt.Color("cuisine_description:N", legend=None),
                 tooltip=["cuisine_description:N", "score:Q"]
             )
-            .properties(height=350)
+            .properties(height=300)
         )
 
         st.altair_chart(chart_best, use_container_width=True)
 
-        # --------------- Worst Cuisines ---------------
-        st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
+
+with c2:
+    if cuisine_scores is not None:
+        st.markdown("#### 🚨 Top 10 Worst Cuisines")
 
         worst_df = worst_cuisines.reset_index()
         worst_df.columns = ["cuisine_description", "score"]
@@ -717,63 +751,7 @@ if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
                 color=alt.Color("cuisine_description:N", legend=None),
                 tooltip=["cuisine_description:N", "score:Q"]
             )
-            .properties(height=350)
+            .properties(height=300)
         )
 
         st.altair_chart(chart_worst, use_container_width=True)
-
-else:
-    # No rows after filtering → handle gracefully
-    st.info("No cuisine data available for this filter.")
-
-
-
-
-
-# ---- Most Common Violations ----
-st.subheader("Most Common Violation Types")
-
-if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
-
-    # Build violation count table (SAFE: enforce unique names)
-    violation_counts = (
-        df_filtered["violation_code"]
-        .value_counts()
-        .reset_index()
-    )
-
-    # FORCE unique column names (prevents Narwhals DuplicateError)
-    violation_counts.columns = ["violation_code", "count"]
-
-    # Add short descriptions (from utils.py)
-    violation_counts["description"] = violation_counts["violation_code"].apply(
-        lambda code: VIOLATION_SHORT.get(code, UNKNOWN_VIOLATION_LABEL)
-    )
-
-    # Only top 10
-    violation_counts = violation_counts.head(10)
-
-    if len(violation_counts) == 0:
-        st.info("No violation data available for this filter.")
-    else:
-        chart_violations = (
-            alt.Chart(violation_counts)
-            .mark_bar()
-            .encode(
-                x=alt.X("violation_code:N", sort="-y", title="Violation Code"),
-                y=alt.Y("count:Q", title="Count"),
-                color=alt.Color("violation_code:N", legend=None),
-                tooltip=[
-                    "violation_code:N",
-                    "description:N",
-                    "count:Q"
-                ],
-            )
-            .properties(height=350)
-        )
-
-        st.altair_chart(chart_violations, use_container_width=True)
-
-else:
-    st.info("No violation data available for this filter.")
-
