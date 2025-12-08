@@ -1,18 +1,13 @@
-
 import streamlit as st
 import pandas as pd
 import folium
 import os
 import requests
 
-
 from streamlit_folium import st_folium
 
 from src.data_loader import get_data
-
 from src.predictor import predict_from_raw_restaurant
-
-
 from src.utils import (
     get_grade_color,
     format_probabilities,
@@ -20,42 +15,21 @@ from src.utils import (
     restaurant_popup_html,
     normalize_text,
 )
-# Google Places module (step 12)
 from src.places import (
     google_place_details,
     reverse_geocode,
     normalize_place_to_restaurant,
-    google_nearby_restaurants
+    google_nearby_restaurants,
 )
 
-print(">>> APP STARTED")
-
-
-import streamlit as st
-
-if "rerun_count" not in st.session_state:
-    st.session_state["rerun_count"] = 0
-
-st.session_state["rerun_count"] += 1
-st.write("🔁 RERUN:", st.session_state["rerun_count"])
-
-
-
-@st.cache_data
-def load_filtered_data():
-    return df_filtered.copy()
-
-
 # -------------------------------------------------
-# Helper: clear everything
+# 🔧 CLEAR SELECTIONS HELPER
 # -------------------------------------------------
 def clear_all_selections():
     st.session_state["google_restaurant"] = None
     st.session_state["google_restaurant_nearby"] = None
     st.session_state["map_click"] = None
     st.session_state["google_nearby"] = []
-    st.rerun()
-
 
 # -------------------------------------------------
 # Google API key (from Streamlit secrets)
@@ -71,35 +45,33 @@ else:
     # Make it available to other modules via environment variable
     os.environ["GOOGLE_MAPS_API_KEY"] = GOOGLE_API_KEY
 
-
 # -------------------------------------------------
 # Page config
 # -------------------------------------------------
 st.set_page_config(
     page_title="CleanKitchen NYC",
     page_icon="🍽️",
-    layout="wide"
+    layout="wide",
 )
 
 st.title("CleanKitchen NYC")
 
+# You can keep these or comment them out if noisy
 st.write("🔑 Secret key exists:", bool(st.secrets.get("GOOGLE_MAPS_API_KEY")))
 st.write("🔑 OS env key exists:", bool(os.environ.get("GOOGLE_MAPS_API_KEY")))
-
 
 st.markdown(
     "Explore NYC restaurant inspections, neighborhood demographics, "
     "and **AI-powered grade predictions** based on real inspection data."
 )
 
-
 # -------------------------------------------------
-# Load data
+# Load data (cached)
 # -------------------------------------------------
-print(">>> LOADING DATA")
 @st.cache_data
 def load_app_data():
     df = get_data()
+
 
     # Basic assumptions about columns
     # Adjust if your col names differ
@@ -115,7 +87,7 @@ def load_app_data():
 
 df = load_app_data()
 
-print(">>> DATA LOADED")
+
 
 if df.empty:
     st.error("No data loaded. Please check your CSV files in the data/ folder.")
@@ -246,7 +218,7 @@ left_col, right_col = st.columns([2, 1])
 
 with left_col:
     st.subheader(" Map of Restaurants")
-    print(">>> BUILDING MAP")
+    
 
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
@@ -476,7 +448,7 @@ with right_col:
             st.markdown("---")
             st.stop()
 
-    print(">>> RENDER UI")
+    
 
     # =================================================
     # PRIORITY 2 — Google Nearby restaurant click (blue dot)
