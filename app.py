@@ -508,7 +508,7 @@ with col1:
             )
         )
 
-        st.altair_chart(pie, use_container_width=True)
+        st.altair_chart(pie, width="content")
     else:
         st.info("No grade data available for the current filter.")
 
@@ -547,7 +547,7 @@ with col2:
                 .properties(height=350)
             )
 
-            st.altair_chart(chart_violations, use_container_width=True)
+            st.altair_chart(chart_violations, width="content")
     else:
         st.info("No violation data available for this filter.")
 
@@ -597,7 +597,7 @@ if cuisine_scores is not None:
             .properties(height=300)
         )
 
-        st.altair_chart(chart_best, use_container_width=True)
+        st.altair_chart(chart_best, width="content")
 
     # Worst cuisines
     with c2:
@@ -618,6 +618,6 @@ if cuisine_scores is not None:
             .properties(height=300)
         )
 
-        st.altair_chart(chart_worst, use_container_width=True)
+        st.altair_chart(chart_worst, width="content")
 else:
     st.info("No cuisine ranking to display.")
