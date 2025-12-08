@@ -225,6 +225,7 @@ with left_col:
             zoom = st.session_state.get("map_zoom", 12)
 
 
+
         # Prepare data for map
         df_for_map = df_filtered.head(2000)
         google_data = st.session_state.get("google_nearby", [])
@@ -370,6 +371,9 @@ with right_col:
 
         # If close to a dataset marker, select it
         if closest_row is not None and min_ds_dist < 0.00002:
+
+            st.session_state["just_selected_restaurant"] = True
+
             st.markdown("## 🍽️ Dataset Restaurant Selected")
 
             name = closest_row.get("DBA") or closest_row.get("dba", "Unknown")
@@ -435,6 +439,9 @@ with right_col:
 
         # Close to a blue marker → select nearby restaurant
         if closest_place is not None and min_nb_dist < 0.00002:
+
+            st.session_state["just_selected_restaurant"] = True
+
             st.markdown("## 🍽️ Google Nearby Restaurant Selected")
 
             details = google_place_details(closest_place["place_id"])
