@@ -659,13 +659,43 @@ else:
 
 
 # ---- Top 10 Best Cuisines (Bar Chart) ----
-if cuisine_scores is not None and len(best_cuisines) > 0:
-    st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
+st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
 
-    st.bar_chart(best_cuisines)
+best_df = best_cuisines.reset_index()
+best_df.columns = ["cuisine_description", "score"]
+
+chart_best = (
+    alt.Chart(best_df)
+    .mark_bar()
+    .encode(
+        x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+        y=alt.Y("score:Q", title="Average Score"),
+        color=alt.Color("cuisine_description:N", legend=None),
+        tooltip=["cuisine_description:N", "score:Q"]
+    )
+    .properties(height=350)
+)
+
+st.altair_chart(chart_best, use_container_width=True)
+
 
 # ---- Top 10 Worst Cuisines (Bar Chart) ----
-if cuisine_scores is not None and len(worst_cuisines) > 0:
-    st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
+st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
 
-    st.bar_chart(worst_cuisines)
+worst_df = worst_cuisines.reset_index()
+worst_df.columns = ["cuisine_description", "score"]
+
+chart_worst = (
+    alt.Chart(worst_df)
+    .mark_bar()
+    .encode(
+        x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+        y=alt.Y("score:Q", title="Average Score"),
+        color=alt.Color("cuisine_description:N", legend=None),
+        tooltip=["cuisine_description:N", "score:Q"]
+    )
+    .properties(height=350)
+)
+
+st.altair_chart(chart_worst, use_container_width=True)
+
