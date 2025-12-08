@@ -323,8 +323,7 @@ with left_col:
 # ===========================
 if st.session_state.get("right_col_done"):
     st.session_state["right_col_done"] = False
-    st.rerun()
-
+    
 
 with right_col:
     st.subheader(" Inspect & Predict")
