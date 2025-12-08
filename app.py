@@ -81,7 +81,7 @@ st.markdown(
 # -------------------------------------------------
 # Load data (cached)
 # -------------------------------------------------
-@st.cache_data
+
 def load_app_data():
     df = get_data()
 
