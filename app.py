@@ -688,9 +688,11 @@ with col2:
 
 
 
-
 # ---- Best & Worst Cuisines (Data Prep) ----
 st.subheader("Best & Worst Cuisine Types")
+
+best_cuisines = None
+worst_cuisines = None
 
 if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
     cuisine_scores = (
@@ -705,16 +707,17 @@ if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
     else:
         best_cuisines = cuisine_scores.head(10)
         worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
-
 else:
     st.info("No cuisine data available for this filter.")
     cuisine_scores = None
 
 
-c1, c2 = st.columns(2)
+# ---- Show Charts Side by Side ----
+if cuisine_scores is not None:
+    c1, c2 = st.columns(2)
 
-with c1:
-    if cuisine_scores is not None:
+    # ----------------- Best -----------------
+    with c1:
         st.markdown("#### 🥇 Top 10 Best Cuisines")
 
         best_df = best_cuisines.reset_index()
@@ -727,16 +730,15 @@ with c1:
                 x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
                 y=alt.Y("score:Q", title="Average Score"),
                 color=alt.Color("cuisine_description:N", legend=None),
-                tooltip=["cuisine_description:N", "score:Q"]
+                tooltip=["cuisine_description:N", "score:Q"],
             )
             .properties(height=300)
         )
 
         st.altair_chart(chart_best, use_container_width=True)
 
-
-with c2:
-    if cuisine_scores is not None:
+    # ----------------- Worst -----------------
+    with c2:
         st.markdown("#### 🚨 Top 10 Worst Cuisines")
 
         worst_df = worst_cuisines.reset_index()
@@ -749,9 +751,12 @@ with c2:
                 x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
                 y=alt.Y("score:Q", title="Average Score"),
                 color=alt.Color("cuisine_description:N", legend=None),
-                tooltip=["cuisine_description:N", "score:Q"]
+                tooltip=["cuisine_description:N", "score:Q"],
             )
             .properties(height=300)
         )
 
         st.altair_chart(chart_worst, use_container_width=True)
+
+else:
+    st.info("No cuisine ranking to display.")
