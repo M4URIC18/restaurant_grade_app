@@ -145,67 +145,52 @@ def build_map(center, zoom, df_for_map, google_nearby_data):
 
     m = folium.Map(location=center, zoom_start=zoom)
 
-    # -------------------------------------------------
-    # 1. Restaurant dataset markers
-    # -------------------------------------------------
+    # ---- Dataset Markers ----
     for _, row in df_for_map.iterrows():
         lat = row["latitude"]
         lon = row["longitude"]
         grade = row.get("grade", "N/A")
         color = get_grade_color(grade)
-
         popup_html = restaurant_popup_html(row)
 
-        marker = folium.CircleMarker(
+        folium.CircleMarker(
             location=[lat, lon],
             radius=4,
             popup=folium.Popup(popup_html, max_width=250),
             color=color,
             fill=True,
             fill_opacity=0.8
+        ).add_to(m)
+
+    # ---- Google Markers ----
+    for place in google_nearby_data:
+        plat = place["geometry"]["location"]["lat"]
+        plon = place["geometry"]["location"]["lng"]
+        name = place.get("name", "Unknown")
+        pid = place.get("place_id")
+
+        selected = (
+            st.session_state.get("google_restaurant_nearby") and
+            st.session_state["google_restaurant_nearby"].get("place_id") == pid
         )
-        marker.add_to(m)
 
-    # # -------------------------------------------------
-    # # 2. Google Nearby markers
-    # # -------------------------------------------------
-    # if google_nearby_data:
-    #     for place in google_nearby_data:
-    #         plat = place["geometry"]["location"]["lat"]
-    #         plon = place["geometry"]["location"]["lng"]
-    #         name = place.get("name", "Unknown")
-    #         pid = place.get("place_id")
+        tooltip_text = f"⭐ {name}" if selected else name
+        radius = 8 if selected else 5
+        color = "#ff8800" if selected else "#1e90ff"
 
-    #         # Highlight selected restaurant (orange)
-    #         selected = (
-    #             st.session_state.get("google_restaurant_nearby") and
-    #             st.session_state["google_restaurant_nearby"].get("place_id") == pid
-    #         )
-
-    #         tooltip_text = f"⭐ {name}" if selected else name
-    #         radius = 8 if selected else 5
-    #         color = "#ff8800" if selected else "#1e90ff"
-
-    #         popup_html = f"""
-    #         <div style='font-size:14px;'>
-    #             <b>{name}</b><br>
-    #             <i>(Google Nearby Restaurant)</i>
-    #         </div>
-    #         """
-
-    #         marker = folium.CircleMarker(
-    #             location=[plat, plon],
-    #             radius=radius,
-    #             popup=folium.Popup(popup_html, max_width=250),
-    #             color=color,
-    #             fill=True,
-    #             fill_opacity=0.9
-    #         )
-
-    #         folium.Tooltip(tooltip_text).add_to(marker)
-    #         marker.add_to(m)
+        folium_circle = folium.CircleMarker(
+            location=[plat, plon],
+            radius=radius,
+            popup=name,
+            color=color,
+            fill=True,
+            fill_opacity=0.9
+        )
+        folium.Tooltip(tooltip_text).add_to(folium_circle)
+        folium_circle.add_to(m)
 
     return m
+
 
 
 
@@ -218,151 +203,63 @@ left_col, right_col = st.columns([2, 1])
 
 with left_col:
     st.subheader(" Map of Restaurants")
-    
 
     if len(df_filtered) == 0:
-        st.info("No restaurants match your filters. Try changing the filters.")
+        st.info("No restaurants match your filters.")
     else:
-        # -------------------------------------------------
-        # 1. Map center & zoom from session (or default)
-        # -------------------------------------------------
+        # ---- 1. Map center ----
         default_center = [
             df_filtered["latitude"].mean(),
             df_filtered["longitude"].mean()
         ]
-
         center = st.session_state.get("map_center", default_center)
         zoom = st.session_state.get("map_zoom", 12)
 
-        # Base folium map
-        m = folium.Map(location=center, zoom_start=zoom)
+        # Prepare data for map
+        df_for_map = df_filtered.head(2000)
+        google_data = st.session_state.get("google_nearby", [])
 
-        # -------------------------------------------------
-        # 2. Add DATASET restaurant markers
-        # -------------------------------------------------
-        MAX_MARKERS = 2000
-        df_for_map = df_filtered.head(MAX_MARKERS)
+        # ---- 2. Build map (cached, fast) ----
+        m = build_map(center, zoom, df_for_map, google_data)
 
-        for _, row in df_for_map.iterrows():
-            lat = row["latitude"]
-            lon = row["longitude"]
-            grade = row.get("grade", "N/A")
-            color = get_grade_color(grade)
-
-            popup_html = restaurant_popup_html(row)
-
-            marker = folium.CircleMarker(
-                location=[lat, lon],
-                radius=4,
-                popup=folium.Popup(popup_html, max_width=250),
-                color=color,
-                fill=True,
-                fill_opacity=0.8
-            )
-            marker.add_to(m)
-
-        # -------------------------------------------------
-        # 3. Add EXISTING Google Nearby markers (blue/orange)
-        # -------------------------------------------------
-        if st.session_state.get("google_nearby"):
-            for place in st.session_state["google_nearby"]:
-                plat = place["geometry"]["location"]["lat"]
-                plon = place["geometry"]["location"]["lng"]
-                name = place.get("name", "Unknown")
-                pid = place.get("place_id")
-
-                selected = (
-                    st.session_state.get("google_restaurant_nearby") and
-                    st.session_state["google_restaurant_nearby"].get("place_id") == pid
-                )
-
-                tooltip_text = f"⭐ {name}" if selected else name
-                radius = 8 if selected else 5
-                color = "#ff8800" if selected else "#1e90ff"
-
-                popup_html = f"""
-                <div style='font-size:14px;'>
-                    <b>{name}</b><br>
-                    <i>(Google Nearby Restaurant)</i>
-                </div>
-                """
-
-                marker = folium.CircleMarker(
-                    location=[plat, plon],
-                    radius=radius,
-                    popup=folium.Popup(popup_html, max_width=250),
-                    color=color,
-                    fill=True,
-                    fill_opacity=0.9
-                )
-                folium.Tooltip(tooltip_text).add_to(marker)
-                marker.add_to(m)
-
-        # -------------------------------------------------
-        # 4. Render folium map with st_folium
-        # -------------------------------------------------
+        # ---- 3. Render map ----
         map_data = st_folium(
             m,
             width="100%",
             height=500,
             key="main_map",
-            returned_objects=["last_clicked", "center", "zoom", "bounds"]
+            returned_objects=["last_clicked", "center", "zoom"]
         )
 
-        # -------------------------------------------------
-        # 5. Save map center & zoom (for smoother reruns)
-        # -------------------------------------------------
-        # if map_data:
-        #     new_center = map_data.get("center")
-        #     new_zoom = map_data.get("zoom")
+        # ---- 4. Update center/zoom (safe) ----
+        if map_data:
+            new_center = map_data.get("center")
+            new_zoom = map_data.get("zoom")
 
-        #     if new_center:
-        #         st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
+            if new_center:
+                st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
+            if new_zoom:
+                st.session_state["map_zoom"] = new_zoom
 
-        #     if new_zoom:
-        #         st.session_state["map_zoom"] = new_zoom
-
-        # -------------------------------------------------
-        # 6. Handle clicks + Google Nearby (ONLY on NEW click)
-        # -------------------------------------------------
+        # ---- 5. Handle NEW clicks ONLY ----
         if map_data and map_data.get("last_clicked"):
-            click_lat = map_data["last_clicked"]["lat"]
-            click_lon = map_data["last_clicked"]["lng"]
-            new_click = (click_lat, click_lon)
+            click = (
+                map_data["last_clicked"]["lat"],
+                map_data["last_clicked"]["lng"]
+            )
 
-            prev_click = st.session_state.get("map_click")
+            if st.session_state.get("map_click") != click:
+                st.session_state["map_click"] = click
 
-            # Only call Google API if this is a DIFFERENT point
-            if new_click != prev_click:
-                st.session_state["map_click"] = new_click
+                with st.spinner("🔍 Searching nearby restaurants..."):
+                    places = google_nearby_restaurants(click[0], click[1])
 
-                from src.places import google_nearby_restaurants
-
-                with st.spinner("🔍 Finding restaurants near this location…"):
-                    nearby = google_nearby_restaurants(click_lat, click_lon)
-
-                st.session_state["google_nearby"] = nearby
+                st.session_state["google_nearby"] = places
                 st.session_state["google_restaurant_nearby"] = None
+                st.session_state["google_restaurant"] = None
 
-                # Clear dataset selection if needed
-                if not st.session_state.get("google_restaurant_nearby"):
-                    st.session_state["google_restaurant"] = None
+                st.rerun()
 
-                st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
-
-    # -------------------------------------------------
-    # 7. Restaurant table
-    # -------------------------------------------------
-    st.subheader("Restaurant List")
-    st.caption("Filtered view based on your selections in the sidebar.")
-
-    cols_to_show = [
-        c for c in ["DBA", "dba", "borough", "zipcode",
-                    "cuisine_description", "score", "grade", "inspection_date"]
-        if c in df_filtered.columns
-    ]
-
-    # st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
 
 
 
