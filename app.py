@@ -400,7 +400,7 @@ with right_col:
 
             # Clear click so it doesn't reprocess
             st.session_state["map_click"] = None
-            return
+            st.stop()
 
     # ============================================================
     # PRIORITY 2 — Google Nearby (Google Mode)
