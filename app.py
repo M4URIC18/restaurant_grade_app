@@ -321,159 +321,177 @@ with left_col:
 # ===========================
 # RIGHT: Inspect & Predict
 # ===========================
-if st.session_state.get("right_col_done"):
+
+# --- RERUN GUARD ---
+if "right_col_done" not in st.session_state:
     st.session_state["right_col_done"] = False
-    # IMPORTANT: DO NOT rerun here
-    # st.rerun()  # ❌ remove this
 
+# If last run triggered a rerun, skip executing right_col logic once
+if st.session_state["right_col_done"]:
+    st.session_state["right_col_done"] = False
+else:
 
-with right_col:
-    st.subheader(" Inspect & Predict")
+    with right_col:
+        st.subheader(" Inspect & Predict")
 
-    google_mode = st.session_state.get("google_mode", False)
-    click = st.session_state.get("map_click")
+        google_mode = st.session_state.get("google_mode", False)
+        click = st.session_state.get("map_click")
 
-    # Do nothing if no click
-    if click is None:
-        st.info("Select a restaurant or click the map to begin.")
-        st.session_state["just_selected_restaurant"] = False
-        st.session_state["last_processed_click"] = None
+        # ----------------------------------------------------------
+        # CASE 0 — No click yet
+        # ----------------------------------------------------------
+        if click is None:
+            st.info("Select a restaurant or click the map to begin.")
+            st.session_state["just_selected_restaurant"] = False
+            st.session_state["last_processed_click"] = None
+
+            st.session_state["right_col_done"] = True
+            st.rerun()
+
+        clat, clon = click
+
+        # ============================================================
+        # PRIORITY 1 — Dataset restaurant selection (dataset mode only)
+        # ============================================================
+        if not google_mode and len(df_filtered) > 0:
+
+            closest_row = None
+            min_ds_dist = float("inf")
+
+            for _, row in df_filtered.iterrows():
+                lat = row.get("latitude")
+                lon = row.get("longitude")
+                if pd.isna(lat) or pd.isna(lon):
+                    continue
+
+                d2 = _dist2(clat, clon, lat, lon)
+                if d2 < min_ds_dist:
+                    min_ds_dist = d2
+                    closest_row = row
+
+            if closest_row is not None and min_ds_dist < 0.00002:
+
+                st.session_state["just_selected_restaurant"] = True
+
+                # UI
+                st.markdown("## 🍽️ Dataset Restaurant Selected")
+
+                name = closest_row.get("DBA") or closest_row.get("dba", "Unknown")
+                borough = closest_row.get("boro") or closest_row.get("borough")
+                zipcode = closest_row.get("zipcode")
+                cuisine = closest_row.get("cuisine_description", "Unknown")
+                score = closest_row.get("score", None)
+                crit = closest_row.get("critical_flag_bin", None)
+
+                st.write(f"**Name:** {name}")
+                st.write(f"**Borough:** {borough}")
+                st.write(f"**ZIP:** {zipcode}")
+                st.write(f"**Cuisine:** {cuisine}")
+                if score is not None:
+                    st.write(f"**Score:** {score}")
+
+                # Prediction
+                raw_restaurant = {
+                    "borough": borough,
+                    "zipcode": zipcode,
+                    "cuisine_description": cuisine,
+                    "score": score,
+                    "critical_flag_bin": crit,
+                }
+
+                pred = predict_from_raw_restaurant(raw_restaurant)
+                grade = pred["grade"]
+                probs = pred["probabilities"]
+                color = get_grade_color(grade)
+
+                st.markdown(
+                    f"### ⭐ Predicted Grade: "
+                    f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+                    unsafe_allow_html=True,
+                )
+
+                st.markdown("#### Confidence")
+                for g_label, p in probs.items():
+                    st.write(f"{g_label}: {p * 100:.1f}%")
+
+                # clear click
+                st.session_state["map_click"] = None
+
+                # Trigger safe rerun
+                st.session_state["right_col_done"] = True
+                st.rerun()
+
+        # ============================================================
+        # PRIORITY 2 — Google Nearby (Google Mode)
+        # ============================================================
+        if google_mode and st.session_state.get("google_nearby"):
+
+            closest_place = None
+            min_nb_dist = float("inf")
+
+            for place in st.session_state["google_nearby"]:
+                plat = place["geometry"]["location"]["lat"]
+                plon = place["geometry"]["location"]["lng"]
+                d2 = _dist2(clat, clon, plat, plon)
+                if d2 < min_nb_dist:
+                    min_nb_dist = d2
+                    closest_place = place
+
+            if closest_place is not None and min_nb_dist < 0.00002:
+
+                st.session_state["just_selected_restaurant"] = True
+
+                st.markdown("## 🍽️ Google Nearby Restaurant Selected")
+
+                details = google_place_details(closest_place["place_id"])
+                norm = normalize_place_to_restaurant(details)
+
+                st.session_state["google_restaurant_nearby"] = norm
+
+                cuisine = norm.get("cuisine_description", "Other")
+
+                st.write(f"**Name:** {norm['name']}")
+                st.write(f"**Address:** {norm['address']}")
+                st.write(f"**ZIP:** {norm['zipcode']}")
+                st.write(f"**Borough:** {norm.get('boro', 'Unknown')}")
+                st.write(f"**Cuisine:** {cuisine}")
+
+                pred = predict_from_raw_restaurant(norm)
+                grade = pred["grade"]
+                probs = pred["probabilities"]
+                color = get_grade_color(grade)
+
+                st.markdown(
+                    f"### ⭐ Predicted Grade: "
+                    f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
+                    unsafe_allow_html=True,
+                )
+
+                st.markdown("#### Confidence")
+                for g_label, p in probs.items():
+                    st.write(f"{g_label}: {p * 100:.1f}%")
+
+                # clear click
+                st.session_state["map_click"] = None
+
+                st.session_state["right_col_done"] = True
+                st.rerun()
+
+        # ============================================================
+        # PRIORITY 3 — Click on map without selecting any marker
+        # ============================================================
+        zipcode, borough, address = reverse_geocode(clat, clon)
+
+        st.markdown("## 📍 Map Click Detected")
+        st.write(f"**Address:** {address or 'Unknown'}")
+        st.write(f"**ZIP:** {zipcode or 'Unknown'}")
+        st.write(f"**Borough:** {borough or 'Unknown'}")
+        st.info("Click a restaurant marker to see the predicted grade.")
+
+        st.session_state["map_click"] = None
         st.session_state["right_col_done"] = True
         st.rerun()
 
-    clat, clon = click
-
-    # ============================================================
-    # PRIORITY 1 — Dataset restaurant selection (dataset mode only)
-    # ============================================================
-    if not google_mode and len(df_filtered) > 0:
-        closest_row = None
-        min_ds_dist = float("inf")
-
-        for _, row in df_filtered.iterrows():
-            lat = row.get("latitude")
-            lon = row.get("longitude")
-            if pd.isna(lat) or pd.isna(lon):
-                continue
-
-            d2 = _dist2(clat, clon, lat, lon)
-            if d2 < min_ds_dist:
-                min_ds_dist = d2
-                closest_row = row
-
-        # Click is close to dataset marker
-        if closest_row is not None and min_ds_dist < 0.00002:
-            st.session_state["just_selected_restaurant"] = True
-
-            st.markdown("## 🍽️ Dataset Restaurant Selected")
-
-            name = closest_row.get("DBA") or closest_row.get("dba", "Unknown")
-            borough = closest_row.get("boro") or closest_row.get("borough")
-            zipcode = closest_row.get("zipcode")
-            cuisine = closest_row.get("cuisine_description", "Unknown")
-            score = closest_row.get("score", None)
-            crit = closest_row.get("critical_flag_bin", None)
-
-            st.write(f"**Name:** {name}")
-            st.write(f"**Borough:** {borough}")
-            st.write(f"**ZIP:** {zipcode}")
-            st.write(f"**Cuisine:** {cuisine}")
-            if score is not None:
-                st.write(f"**Score:** {score}")
-
-            raw_restaurant = {
-                "borough": borough,
-                "zipcode": zipcode,
-                "cuisine_description": cuisine,
-                "score": score,
-                "critical_flag_bin": crit,
-            }
-
-            pred = predict_from_raw_restaurant(raw_restaurant)
-            grade = pred["grade"]
-            probs = pred["probabilities"]
-            color = get_grade_color(grade)
-
-            st.markdown(
-                f"### ⭐ Predicted Grade: "
-                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True,
-            )
-
-            st.markdown("#### Confidence")
-            for g_label, p in probs.items():
-                st.write(f"{g_label}: {p * 100:.1f}%")
-
-            st.session_state["map_click"] = None
-            st.session_state["right_col_done"] = True
-            st.rerun()
-
-    # ============================================================
-    # PRIORITY 2 — Google Nearby (Google Mode)
-    # ============================================================
-    if google_mode and st.session_state.get("google_nearby"):
-        closest_place = None
-        min_nb_dist = float("inf")
-
-        for place in st.session_state["google_nearby"]:
-            plat = place["geometry"]["location"]["lat"]
-            plon = place["geometry"]["location"]["lng"]
-            d2 = _dist2(clat, clon, plat, plon)
-            if d2 < min_nb_dist:
-                min_nb_dist = d2
-                closest_place = place
-
-        if closest_place is not None and min_nb_dist < 0.00002:
-            st.session_state["just_selected_restaurant"] = True
-
-            st.markdown("## 🍽️ Google Nearby Restaurant Selected")
-
-            details = google_place_details(closest_place["place_id"])
-            norm = normalize_place_to_restaurant(details)
-
-            st.session_state["google_restaurant_nearby"] = norm
-
-            cuisine = norm.get("cuisine_description", "Other")
-
-            st.write(f"**Name:** {norm['name']}")
-            st.write(f"**Address:** {norm['address']}")
-            st.write(f"**ZIP:** {norm['zipcode']}")
-            st.write(f"**Borough:** {norm.get('boro', 'Unknown')}")
-            st.write(f"**Cuisine:** {cuisine}")
-
-            pred = predict_from_raw_restaurant(norm)
-            grade = pred["grade"]
-            probs = pred["probabilities"]
-            color = get_grade_color(grade)
-
-            st.markdown(
-                f"### ⭐ Predicted Grade: "
-                f"<span style='color:{color}; font-size:24px; font-weight:bold'>{grade}</span>",
-                unsafe_allow_html=True,
-            )
-
-            st.markdown("#### Confidence")
-            for g_label, p in probs.items():
-                st.write(f"{g_label}: {p * 100:.1f}%")
-
-            st.session_state["map_click"] = None
-            st.session_state["right_col_done"] = True
-            st.rerun()
-
-    # ============================================================
-    # PRIORITY 3 — Raw map click
-    # ============================================================
-    zipcode, borough, address = reverse_geocode(clat, clon)
-
-    st.markdown("## 📍 Map Click Detected")
-    st.write(f"**Address:** {address or 'Unknown'}")
-    st.write(f"**ZIP:** {zipcode or 'Unknown'}")
-    st.write(f"**Borough:** {borough or 'Unknown'}")
-    st.info("Click a restaurant marker to see the predicted grade.")
-
-    st.session_state["map_click"] = None
-    st.session_state["right_col_done"] = True
-    st.rerun()
 
 
 
