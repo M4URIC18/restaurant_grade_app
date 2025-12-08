@@ -5,8 +5,10 @@ import os
 import requests
 import altair as alt
 
-
 from streamlit_folium import st_folium
+
+from src.utils import VIOLATION_SHORT, UNKNOWN_VIOLATION_LABEL
+
 
 from src.data_loader import get_data
 from src.predictor import predict_from_raw_restaurant
@@ -733,7 +735,7 @@ st.subheader("Most Common Violation Types")
 
 if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
 
-    # Build violation count table (SAFE: enforce unique column names)
+    # Build violation count table (SAFE: enforce unique names)
     violation_counts = (
         df_filtered["violation_code"]
         .value_counts()
@@ -743,13 +745,17 @@ if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
     # FORCE unique column names (prevents Narwhals DuplicateError)
     violation_counts.columns = ["violation_code", "count"]
 
+    # Add short descriptions (from utils.py)
+    violation_counts["description"] = violation_counts["violation_code"].apply(
+        lambda code: VIOLATION_SHORT.get(code, UNKNOWN_VIOLATION_LABEL)
+    )
+
     # Only top 10
     violation_counts = violation_counts.head(10)
 
     if len(violation_counts) == 0:
         st.info("No violation data available for this filter.")
     else:
-
         chart_violations = (
             alt.Chart(violation_counts)
             .mark_bar()
@@ -757,7 +763,11 @@ if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
                 x=alt.X("violation_code:N", sort="-y", title="Violation Code"),
                 y=alt.Y("count:Q", title="Count"),
                 color=alt.Color("violation_code:N", legend=None),
-                tooltip=["violation_code:N", "count:Q"],
+                tooltip=[
+                    "violation_code:N",
+                    "description:N",
+                    "count:Q"
+                ],
             )
             .properties(height=350)
         )
@@ -766,3 +776,4 @@ if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
 
 else:
     st.info("No violation data available for this filter.")
+

@@ -289,3 +289,26 @@ def normalize_borough(boro):
 
 
 
+
+
+VIOLATION_SHORT = {
+    "02G": "Cold Hold",
+    "02B": "Hot Hold",
+    "04A": "Pests",
+    "04L": "Flies",
+    "04M": "Roaches",
+    "04N": "Rats",
+    "06C": "Food Temp",
+    "06D": "Food Contact",
+    "06E": "Sanitation",
+    "08A": "Handwash",
+    "09C": "Waste",
+    "10F": "Plumbing",
+    "10G": "Water",
+    "15D": "Lighting",
+    "10B": "Ventilation",
+    "16A": "Food Allergy",
+    "22A": "Facility",
+}
+
+UNKNOWN_VIOLATION_LABEL = "Other"
