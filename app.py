@@ -254,11 +254,16 @@ with left_col:
         )
         
         # -------------------------------------------------
-        # ZOOM FREEZE — Prevent rebuild during zoom
+        # SMART ZOOM FREEZE — avoid rebuild only when zooming
         # -------------------------------------------------
-        if map_data and map_data.get("zoom") != zoom:
-            # User is zooming → skip everything else to avoid flicker & double keys
-            st.stop()
+        if map_data:
+            new_zoom = map_data.get("zoom")
+            new_click = map_data.get("last_clicked")
+
+            # If zoom changed AND no new click → it's a zoom gesture
+            if new_zoom != zoom and new_click is None:
+                st.stop()
+
 
 
 
