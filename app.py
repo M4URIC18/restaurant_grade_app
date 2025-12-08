@@ -286,21 +286,25 @@ with right_col:
     # =================================================
     # PRIORITY 1 — Dataset restaurant (CSV) click
     # =================================================
+    # =================================================
+    # PRIORITY 1 — Dataset restaurant (CSV) click
+    # =================================================
     if has_click and len(df_filtered) > 0:
         clat, clon = st.session_state["map_click"]
 
         closest_row = None
         min_ds_dist = float("inf")
 
-        # for _, row in df_filtered.iterrows():
-        #     if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
-        #         continue
-        #     d2 = _dist2(clat, clon, row["latitude"], row["longitude"])
-        #     if d2 < min_ds_dist:
-        #         min_ds_dist = d2
-        #         closest_row = row
+        # ENABLED: find nearest **dataset** restaurant to the click
+        for _, row in df_filtered.iterrows():
+            if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+                continue
+            d2 = _dist2(clat, clon, row["latitude"], row["longitude"])
+            if d2 < min_ds_dist:
+                min_ds_dist = d2
+                closest_row = row
 
-        # Very close to a dataset marker
+        # If close to a dataset marker, select it
         if closest_row is not None and min_ds_dist < 0.00002:
             st.markdown("## 🍽️ Dataset Restaurant Selected")
 
@@ -318,7 +322,7 @@ with right_col:
             if score is not None:
                 st.write(f"**Score:** {score}")
 
-            # Predict
+            # Make prediction input
             raw_restaurant = {
                 "borough": borough,
                 "zipcode": zipcode,
@@ -344,6 +348,7 @@ with right_col:
 
             st.markdown("---")
             st.stop()
+
 
     
 
