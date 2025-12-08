@@ -658,44 +658,68 @@ else:
 
 
 
-# ---- Top 10 Best Cuisines (Bar Chart) ----
-st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
 
-best_df = best_cuisines.reset_index()
-best_df.columns = ["cuisine_description", "score"]
+# ---- Best & Worst Cuisines (Bar Charts) ----
+st.subheader("Best & Worst Cuisine Types")
 
-chart_best = (
-    alt.Chart(best_df)
-    .mark_bar()
-    .encode(
-        x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
-        y=alt.Y("score:Q", title="Average Score"),
-        color=alt.Color("cuisine_description:N", legend=None),
-        tooltip=["cuisine_description:N", "score:Q"]
+if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
+    # Compute average score per cuisine
+    cuisine_scores = (
+        df_filtered.groupby("cuisine_description")["score"]
+        .mean()
+        .sort_values()
     )
-    .properties(height=350)
-)
 
-st.altair_chart(chart_best, use_container_width=True)
+    # If no cuisine left after filtering
+    if len(cuisine_scores) == 0:
+        st.info("No cuisine data available for this filter.")
+    else:
+        # Best (lowest score)
+        best_cuisines = cuisine_scores.head(10)
 
+        # Worst (highest score)
+        worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
 
-# ---- Top 10 Worst Cuisines (Bar Chart) ----
-st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
+        # --------------- Best Cuisines ---------------
+        st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
 
-worst_df = worst_cuisines.reset_index()
-worst_df.columns = ["cuisine_description", "score"]
+        best_df = best_cuisines.reset_index()
+        best_df.columns = ["cuisine_description", "score"]
 
-chart_worst = (
-    alt.Chart(worst_df)
-    .mark_bar()
-    .encode(
-        x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
-        y=alt.Y("score:Q", title="Average Score"),
-        color=alt.Color("cuisine_description:N", legend=None),
-        tooltip=["cuisine_description:N", "score:Q"]
-    )
-    .properties(height=350)
-)
+        chart_best = (
+            alt.Chart(best_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+                y=alt.Y("score:Q", title="Average Score"),
+                color=alt.Color("cuisine_description:N", legend=None),
+                tooltip=["cuisine_description:N", "score:Q"]
+            )
+            .properties(height=350)
+        )
 
-st.altair_chart(chart_worst, use_container_width=True)
+        st.altair_chart(chart_best, use_container_width=True)
 
+        # --------------- Worst Cuisines ---------------
+        st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
+
+        worst_df = worst_cuisines.reset_index()
+        worst_df.columns = ["cuisine_description", "score"]
+
+        chart_worst = (
+            alt.Chart(worst_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+                y=alt.Y("score:Q", title="Average Score"),
+                color=alt.Color("cuisine_description:N", legend=None),
+                tooltip=["cuisine_description:N", "score:Q"]
+            )
+            .properties(height=350)
+        )
+
+        st.altair_chart(chart_worst, use_container_width=True)
+
+else:
+    # No rows after filtering → handle gracefully
+    st.info("No cuisine data available for this filter.")
