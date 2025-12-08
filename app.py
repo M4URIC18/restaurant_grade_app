@@ -466,7 +466,7 @@ with right_col:
 
     st.session_state["map_click"] = None
 
-    
+
 
 
 
