@@ -156,9 +156,18 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 def build_map(center, zoom, df_for_map, google_nearby_data):
     import folium
 
-    m = folium.Map(location=center, zoom_start=zoom)
+    # --- Always build a fresh map ---
+    m = folium.Map(location=center, zoom_start=zoom, control_scale=True)
 
-    # ---- Dataset Markers ----
+    # ==========================================================
+    # FIX #1 — Create FeatureGroups to prevent mutation errors
+    # ==========================================================
+    dataset_fg = folium.FeatureGroup(name="Dataset Restaurants")
+    google_fg = folium.FeatureGroup(name="Google Restaurants")
+
+    # ---------------------------
+    # Dataset markers
+    # ---------------------------
     for _, row in df_for_map.iterrows():
         lat = row["latitude"]
         lon = row["longitude"]
@@ -172,10 +181,12 @@ def build_map(center, zoom, df_for_map, google_nearby_data):
             popup=folium.Popup(popup_html, max_width=250),
             color=color,
             fill=True,
-            fill_opacity=0.8
-        ).add_to(m)
+            fill_opacity=0.8,
+        ).add_to(dataset_fg)
 
-    # ---- Google Markers ----
+    # ---------------------------
+    # Google Places markers
+    # ---------------------------
     for place in google_nearby_data:
         plat = place["geometry"]["location"]["lat"]
         plon = place["geometry"]["location"]["lng"]
@@ -183,26 +194,31 @@ def build_map(center, zoom, df_for_map, google_nearby_data):
         pid = place.get("place_id")
 
         selected = (
-            st.session_state.get("google_restaurant_nearby") and
-            st.session_state["google_restaurant_nearby"].get("place_id") == pid
+            st.session_state.get("google_restaurant_nearby")
+            and st.session_state["google_restaurant_nearby"].get("place_id") == pid
         )
 
         tooltip_text = f"⭐ {name}" if selected else name
         radius = 8 if selected else 5
         color = "#ff8800" if selected else "#1e90ff"
 
-        folium_circle = folium.CircleMarker(
+        marker = folium.CircleMarker(
             location=[plat, plon],
             radius=radius,
             popup=name,
             color=color,
             fill=True,
-            fill_opacity=0.9
+            fill_opacity=0.9,
         )
-        folium.Tooltip(tooltip_text).add_to(folium_circle)
-        folium_circle.add_to(m)
+        folium.Tooltip(tooltip_text).add_to(marker)
+        marker.add_to(google_fg)
+
+    # --- Add groups to the map (only AFTER fully built) ---
+    dataset_fg.add_to(m)
+    google_fg.add_to(m)
 
     return m
+
 
 
 
@@ -226,14 +242,16 @@ with left_col:
             df_filtered["longitude"].mean()
         ]
         if st.session_state.get("just_selected_restaurant"):
-            # Use the stored center/zoom exactly — do NOT override
+
+            # Use stored center & zoom exactly
             center = st.session_state["map_center"]
             zoom = st.session_state["map_zoom"]
 
-            # Clear the flag after applying it
+            # Reset flag so next reruns act normal
             st.session_state["just_selected_restaurant"] = False
+
         else:
-            # Normal behavior
+            # Normal behavior (keep last view)
             center = st.session_state.get("map_center", default_center)
             zoom = st.session_state.get("map_zoom", 12)
 
