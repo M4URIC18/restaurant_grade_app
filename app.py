@@ -282,25 +282,29 @@ with left_col:
             if new_zoom:
                 st.session_state["map_zoom"] = new_zoom
 
-        # 7. Handle map clicks
+        # 7. Handle map clicks (stable version — NO st.stop, NO refresh loop)
         if map_data and map_data.get("last_clicked"):
             click = (
                 map_data["last_clicked"]["lat"],
                 map_data["last_clicked"]["lng"],
             )
 
-            # Avoid reprocessing same click
+            # Process only new clicks
             if st.session_state.get("last_processed_click") != click:
                 st.session_state["last_processed_click"] = click
                 st.session_state["map_click"] = click
 
                 if google_mode:
-                    # In Google mode: click fetches nearby restaurants
+                    # Google mode → fetch nearby places
                     with st.spinner("🔍 Searching nearby restaurants..."):
                         places = google_nearby_restaurants(click[0], click[1])
                     st.session_state["google_nearby"] = places
-                st.session_state["force_refresh"] = not st.session_state.get("force_refresh", False)
-                st.stop()
+                else:
+                    # dataset mode → clear previous google results
+                    st.session_state["google_nearby"] = []
+
+                # IMPORTANT: no st.stop(), no rerun loop
+
 
         # 8. Table of filtered restaurants
         st.markdown("### Restaurants in this area")
@@ -321,17 +325,21 @@ with right_col:
     st.subheader(" Inspect & Predict")
 
     google_mode = st.session_state.get("google_mode", False)
-    has_click = (
-        st.session_state.get("map_click") is not None
-        and st.session_state.get("just_selected_restaurant")
-    )
+    click = st.session_state.get("map_click")
 
-    # -----------------------------------------
-    # PRIORITY 1 — Dataset restaurant (CSV) click (only in dataset mode)
-    # -----------------------------------------
-    if not google_mode and has_click and len(df_filtered) > 0:
-        clat, clon = st.session_state["map_click"]
+    # Do nothing if no click
+    if click is None:
+        st.info("Select a restaurant or click the map to begin.")
+        st.session_state["just_selected_restaurant"] = False
+        st.session_state["last_processed_click"] = None
+        return
 
+    clat, clon = click
+
+    # ============================================================
+    # PRIORITY 1 — Dataset restaurant selection (dataset mode only)
+    # ============================================================
+    if not google_mode and len(df_filtered) > 0:
         closest_row = None
         min_ds_dist = float("inf")
 
@@ -346,7 +354,7 @@ with right_col:
                 min_ds_dist = d2
                 closest_row = row
 
-        # Only select if click is actually near a dataset marker
+        # Click is close to dataset marker
         if closest_row is not None and min_ds_dist < 0.00002:
             st.session_state["just_selected_restaurant"] = True
 
@@ -366,6 +374,7 @@ with right_col:
             if score is not None:
                 st.write(f"**Score:** {score}")
 
+            # Prediction
             raw_restaurant = {
                 "borough": borough,
                 "zipcode": zipcode,
@@ -389,17 +398,14 @@ with right_col:
             for g_label, p in probs.items():
                 st.write(f"{g_label}: {p * 100:.1f}%")
 
-            st.markdown("---")
-
+            # Clear click so it doesn't reprocess
             st.session_state["map_click"] = None
-            st.stop()
+            return
 
-    # -----------------------------------------
-    # PRIORITY 2 — Google Nearby restaurant click (blue dot) in Google mode
-    # -----------------------------------------
-    if google_mode and has_click and st.session_state.get("google_nearby"):
-        clat, clon = st.session_state["map_click"]
-
+    # ============================================================
+    # PRIORITY 2 — Google Nearby (Google Mode)
+    # ============================================================
+    if google_mode and st.session_state.get("google_nearby"):
         closest_place = None
         min_nb_dist = float("inf")
 
@@ -411,7 +417,6 @@ with right_col:
                 min_nb_dist = d2
                 closest_place = place
 
-        # If click is close to a Google marker
         if closest_place is not None and min_nb_dist < 0.00002:
             st.session_state["just_selected_restaurant"] = True
 
@@ -422,7 +427,7 @@ with right_col:
 
             st.session_state["google_restaurant_nearby"] = norm
 
-            cuisine = norm.get("cuisine_description", "Other") or "Other"
+            cuisine = norm.get("cuisine_description", "Other")
 
             st.write(f"**Name:** {norm['name']}")
             st.write(f"**Address:** {norm['address']}")
@@ -445,27 +450,21 @@ with right_col:
             for g_label, p in probs.items():
                 st.write(f"{g_label}: {p * 100:.1f}%")
 
-            st.markdown("---")
-            st.stop()
+            st.session_state["map_click"] = None
+            return
 
-    # -----------------------------------------
-    # PRIORITY 3 — Plain map click (no clear restaurant match)
-    # -----------------------------------------
-    if has_click:
-        clat, clon = st.session_state["map_click"]
+    # ============================================================
+    # PRIORITY 3 — Click on map without selecting any marker
+    # ============================================================
+    zipcode, borough, address = reverse_geocode(clat, clon)
 
-        st.markdown("## 📍 Map Click Detected")
+    st.markdown("## 📍 Map Click Detected")
+    st.write(f"**Address:** {address or 'Unknown'}")
+    st.write(f"**ZIP:** {zipcode or 'Unknown'}")
+    st.write(f"**Borough:** {borough or 'Unknown'}")
+    st.info("Click a restaurant marker to see the predicted grade.")
 
-        # Use our helper reverse_geocode instead of raw requests
-        zipcode, borough, address = reverse_geocode(clat, clon)
-
-        st.write(f"**Address:** {address or 'Unknown'}")
-        st.write(f"**ZIP:** {zipcode or 'Unknown'}")
-        st.write(f"**Borough:** {borough or 'Unknown'}")
-
-        st.info("Click a restaurant marker to see the predicted grade.")
-        st.markdown("---")
-        st.stop()
+    st.session_state["map_click"] = None
 
     # -----------------------------------------
     # PRIORITY 4 — No click yet
