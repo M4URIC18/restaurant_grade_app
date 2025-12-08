@@ -317,8 +317,14 @@ with left_col:
             new_click = map_data.get("last_clicked")
 
             # If zoom changed AND no new click → it's a zoom gesture
-            if new_zoom != zoom and new_click is None:
+            # STOP ONLY IF user is manually zooming (not during selection click)
+            if (
+                new_zoom != zoom 
+                and new_click is None 
+                and not st.session_state.get("just_selected_restaurant")
+            ):
                 st.stop()
+
 
 
 
@@ -333,12 +339,13 @@ with left_col:
                 st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
 
             # DO NOT SAVE new zoom on every event, ONLY if user clicked a marker
+            # Save zoom only when the user manually zooms (not selection)
             if (
                 new_zoom 
-                and "google_restaurant" in st.session_state  # we have real selection
-                and st.session_state["google_restaurant"] is not None
+                and not st.session_state.get("just_selected_restaurant")
             ):
                 st.session_state["map_zoom"] = new_zoom
+
 
 
         # ---- 5. Handle NEW clicks ONLY ----
