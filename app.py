@@ -332,7 +332,7 @@ with right_col:
         st.info("Select a restaurant or click the map to begin.")
         st.session_state["just_selected_restaurant"] = False
         st.session_state["last_processed_click"] = None
-        return
+        st.stop()
 
     clat, clon = click
 
@@ -465,6 +465,7 @@ with right_col:
     st.info("Click a restaurant marker to see the predicted grade.")
 
     st.session_state["map_click"] = None
+    st.stop()
 
 
 
