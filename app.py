@@ -1,3 +1,7 @@
+@st.cache_data
+def load_filtered_data():
+    return df_filtered.copy()
+
 import streamlit as st
 import pandas as pd
 import folium
@@ -156,6 +160,77 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
 
+@st.cache_data
+def build_map(center, zoom, df_for_map, google_nearby_data):
+    import folium
+
+    m = folium.Map(location=center, zoom_start=zoom)
+
+    # -------------------------------------------------
+    # 1. Restaurant dataset markers
+    # -------------------------------------------------
+    for _, row in df_for_map.iterrows():
+        lat = row["latitude"]
+        lon = row["longitude"]
+        grade = row.get("grade", "N/A")
+        color = get_grade_color(grade)
+
+        popup_html = restaurant_popup_html(row)
+
+        marker = folium.CircleMarker(
+            location=[lat, lon],
+            radius=4,
+            popup=folium.Popup(popup_html, max_width=250),
+            color=color,
+            fill=True,
+            fill_opacity=0.8
+        )
+        marker.add_to(m)
+
+    # -------------------------------------------------
+    # 2. Google Nearby markers
+    # -------------------------------------------------
+    if google_nearby_data:
+        for place in google_nearby_data:
+            plat = place["geometry"]["location"]["lat"]
+            plon = place["geometry"]["location"]["lng"]
+            name = place.get("name", "Unknown")
+            pid = place.get("place_id")
+
+            # Highlight selected restaurant (orange)
+            selected = (
+                st.session_state.get("google_restaurant_nearby") and
+                st.session_state["google_restaurant_nearby"].get("place_id") == pid
+            )
+
+            tooltip_text = f"⭐ {name}" if selected else name
+            radius = 8 if selected else 5
+            color = "#ff8800" if selected else "#1e90ff"
+
+            popup_html = f"""
+            <div style='font-size:14px;'>
+                <b>{name}</b><br>
+                <i>(Google Nearby Restaurant)</i>
+            </div>
+            """
+
+            marker = folium.CircleMarker(
+                location=[plat, plon],
+                radius=radius,
+                popup=folium.Popup(popup_html, max_width=250),
+                color=color,
+                fill=True,
+                fill_opacity=0.9
+            )
+
+            folium.Tooltip(tooltip_text).add_to(marker)
+            marker.add_to(m)
+
+    return m
+
+
+
+
 
 # -------------------------------------------------
 # MAIN LAYOUT: Map (left) + Details/Prediction (right)
@@ -164,14 +239,13 @@ left_col, right_col = st.columns([2, 1])
 
 with left_col:
     st.subheader(" Map of Restaurants")
-
     print(">>> BUILDING MAP")
 
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters. Try changing the filters.")
     else:
         # -------------------------------------------------
-        # 1. Create map centered on filtered dataset
+        # 1. Determine map center + zoom
         # -------------------------------------------------
         default_center = [
             df_filtered["latitude"].mean(),
@@ -181,70 +255,21 @@ with left_col:
         center = st.session_state.get("map_center", default_center)
         zoom = st.session_state.get("map_zoom", 12)
 
-        m = folium.Map(location=center, zoom_start=zoom)
-
         # -------------------------------------------------
-        # 2. Add dataset restaurants to the map
+        # 2. Prepare dataset restaurants for map rendering
         # -------------------------------------------------
         MAX_MARKERS = 2000
         df_for_map = df_filtered.head(MAX_MARKERS)
 
-        for _, row in df_for_map.iterrows():
-            lat = row["latitude"]
-            lon = row["longitude"]
-            grade = row.get("grade", "N/A")
-            color = get_grade_color(grade)
-
-            popup_html = restaurant_popup_html(row)
-
-            marker = folium.CircleMarker(
-                location=[lat, lon],
-                radius=4,
-                popup=folium.Popup(popup_html, max_width=250),
-                color=color,
-                fill=True,
-                fill_opacity=0.8
-            )
-            marker.add_to(m)
-
         # -------------------------------------------------
-        # 3. Google Nearby - draw EXISTING blue markers
+        # 3. Create map using cached optimized builder
         # -------------------------------------------------
-        nearby = []
-
-        if st.session_state.get("google_nearby"):
-            for place in st.session_state["google_nearby"]:
-                plat = place["geometry"]["location"]["lat"]
-                plon = place["geometry"]["location"]["lng"]
-                name = place.get("name", "Unknown")
-                pid = place.get("place_id")
-
-                selected = (
-                    st.session_state.get("google_restaurant_nearby") and
-                    st.session_state["google_restaurant_nearby"].get("place_id") == pid
-                )
-
-                tooltip_text = f"⭐ {name}" if selected else name
-                radius = 8 if selected else 5
-                color = "#ff8800" if selected else "#1e90ff"
-
-                popup_html = f"""
-                <div style='font-size:14px;'>
-                    <b>{name}</b><br>
-                    <i>(Google Nearby Restaurant)</i>
-                </div>
-                """
-
-                marker = folium.CircleMarker(
-                    location=[plat, plon],
-                    radius=radius,
-                    popup=folium.Popup(popup_html, max_width=250),
-                    color=color,
-                    fill=True,
-                    fill_opacity=0.9
-                )
-                folium.Tooltip(tooltip_text).add_to(marker)
-                marker.add_to(m)
+        m = build_map(
+            center=center,
+            zoom=zoom,
+            df_for_map=df_for_map,
+            google_nearby_data=st.session_state.get("google_nearby", [])
+        )
 
         # -------------------------------------------------
         # 4. Render Folium map
@@ -254,18 +279,12 @@ with left_col:
             width="100%",
             height=500,
             key="main_map",
-            returned_objects=[
-                "last_clicked",
-                "center",
-                "zoom",
-                "bounds"
-            ]
+            returned_objects=["last_clicked", "center", "zoom", "bounds"]
         )
 
         # -------------------------------------------------
-        # 5. Handle clicks + Google Nearby (ONLY on new click)
+        # 5. Handle clicks + Google Nearby → ONLY on *new* user click
         # -------------------------------------------------
-        # previous click to compare with
         prev_click = st.session_state.get("map_click")
 
         if map_data and map_data.get("last_clicked"):
@@ -273,34 +292,28 @@ with left_col:
             click_lon = map_data["last_clicked"]["lng"]
             new_click = (click_lat, click_lon)
 
-            # Only call Google API if the user clicked a NEW point
+            # only call Google Nearby on NEW clicks
             if new_click != prev_click:
                 st.session_state["map_click"] = new_click
 
                 from src.places import google_nearby_restaurants
-
                 with st.spinner("🔍 Finding restaurants near this location…"):
                     nearby = google_nearby_restaurants(click_lat, click_lon)
 
                 st.session_state["google_nearby"] = nearby
                 st.session_state["google_restaurant_nearby"] = None
-
-                # If user was focused on a dataset restaurant, clear it
-                if not st.session_state.get("google_restaurant_nearby"):
-                    st.session_state["google_restaurant"] = None
+                st.session_state["google_restaurant"] = None
 
                 st.success(f"📍 You clicked at: {click_lat:.6f}, {click_lon:.6f}")
 
         # -------------------------------------------------
-        # 6. Save map state (center + zoom)
+        # 6. Save map state (center + zoom) persistently
         # -------------------------------------------------
         if map_data:
             center = map_data.get("center")
             zoom = map_data.get("zoom")
-
             if center:
                 st.session_state["map_center"] = [center["lat"], center["lng"]]
-
             if zoom:
                 st.session_state["map_zoom"] = zoom
 
@@ -317,6 +330,7 @@ with left_col:
     ]
 
     st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
+
 
 
 
