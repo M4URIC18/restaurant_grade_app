@@ -242,13 +242,16 @@ with left_col:
                 st.session_state["map_zoom"] = new_zoom
 
         # ---- 5. Handle NEW clicks ONLY ----
+                # ---- 5. Handle NEW clicks ONLY ----
         if map_data and map_data.get("last_clicked"):
             click = (
                 map_data["last_clicked"]["lat"],
                 map_data["last_clicked"]["lng"]
             )
 
-            if st.session_state.get("map_click") != click:
+            # Prevent repeated triggers from Streamlit-Folium
+            if st.session_state.get("last_processed_click") != click:
+                st.session_state["last_processed_click"] = click
                 st.session_state["map_click"] = click
 
                 with st.spinner("🔍 Searching nearby restaurants..."):
@@ -257,6 +260,10 @@ with left_col:
                 st.session_state["google_nearby"] = places
                 st.session_state["google_restaurant_nearby"] = None
                 st.session_state["google_restaurant"] = None
+
+                # IMPORTANT: stop RIGHT COLUMN from running this cycle
+                st.rerun()
+
 
 
 
