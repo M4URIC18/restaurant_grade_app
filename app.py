@@ -157,7 +157,7 @@ st.sidebar.markdown(f"**Results: {len(df_filtered)} restaurants**")
 
 
 
-def build_map(center, zoom, df_for_map, google_nearby_data):
+def build_map(center, zoom, df_for_map, google_nearby_data, google_mode):
     import folium
 
     # --- Always build a fresh map ---
@@ -218,8 +218,12 @@ def build_map(center, zoom, df_for_map, google_nearby_data):
         marker.add_to(google_fg)
 
     # --- Add groups to the map (only AFTER fully built) ---
-    dataset_fg.add_to(m)
-    google_fg.add_to(m)
+    # Add only what matches the current mode
+    if google_mode:
+        google_fg.add_to(m)
+    else:
+        dataset_fg.add_to(m)
+
 
     return m
 
@@ -236,6 +240,19 @@ left_col, right_col = st.columns([2, 1])
 
 with left_col:
     st.subheader(" Map of Restaurants")
+    google_mode = st.toggle("Enable Google Nearby Search", key="google_mode")
+    # Mode switch cleanup
+    if google_mode:
+        # Leaving dataset mode → clear dataset selection
+        st.session_state.pop("google_nearby", None)
+        st.session_state.pop("google_restaurant_nearby", None)
+        # dataset selection stays but won't be used
+    else:
+        # Leaving google mode → clear google selection
+        st.session_state.pop("google_restaurant", None)
+        st.session_state.pop("google_nearby", None)
+
+
 
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters.")
@@ -301,7 +318,7 @@ with left_col:
         #     m = st.session_state["last_map_object"]
 
         # ---- 2. Build map (always fresh Folium map) ----
-        m = build_map(center, zoom, df_for_map, google_data)
+        m = build_map(center, zoom, df_for_map, google_data, google_mode)
 
 
         # ---- 3. Render map ----
@@ -373,7 +390,7 @@ with left_col:
 
         # ---- 5. Handle NEW clicks ONLY ----
                 # ---- 5. Handle NEW clicks ONLY ----
-        if map_data and map_data.get("last_clicked"):
+        if google_mode and map_data and map_data.get("last_clicked"):
             click = (
                 map_data["last_clicked"]["lat"],
                 map_data["last_clicked"]["lng"]
@@ -405,6 +422,8 @@ with left_col:
 
 with right_col:
     st.subheader(" Inspect & Predict")
+
+    google_mode = st.session_state.get("google_mode", False)
 
     import requests
 
