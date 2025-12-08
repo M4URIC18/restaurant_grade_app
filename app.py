@@ -253,19 +253,12 @@ with left_col:
             returned_objects=["last_clicked", "center", "zoom"]
         )
         
-        # If the user is zooming, do not rebuild the map
+        # -------------------------------------------------
+        # ZOOM FREEZE — Prevent rebuild during zoom
+        # -------------------------------------------------
         if map_data and map_data.get("zoom") != zoom:
-            # use cached map; ignore live rebuild
-            if "last_map_object" in st.session_state:
-                m = st.session_state["last_map_object"]
-                map_data = st_folium(
-                    m,
-                    width="100%",
-                    height=500,
-                    key="main_map",
-                    returned_objects=["last_clicked", "center", "zoom"]
-                )
-                st.stop()
+            # User is zooming → skip everything else to avoid flicker & double keys
+            st.stop()
 
 
 
