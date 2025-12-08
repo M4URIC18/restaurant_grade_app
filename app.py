@@ -466,10 +466,9 @@ with right_col:
 
     st.session_state["map_click"] = None
 
-    # -----------------------------------------
-    # PRIORITY 4 — No click yet
-    # -----------------------------------------
-    st.info("Select a restaurant (dataset marker or blue marker) or click the map to begin.")
+    
+
+
 
 # -------------------------------------------------
 # 📊 Insights Section
