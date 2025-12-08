@@ -314,7 +314,7 @@ with left_col:
 
         st.dataframe(
             df_filtered[cols].reset_index(drop=True),
-            use_container_width=True,
+            width='stretch',
             height=300,
         )
 
