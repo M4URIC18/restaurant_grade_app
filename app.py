@@ -236,24 +236,35 @@ with left_col:
     if len(df_filtered) == 0:
         st.info("No restaurants match your filters.")
     else:
-        # ---- 1. Map center ----
+        # ----------------------------------------------------
+        # 1. Compute default center (ONLY if we have no memory)
+        # ----------------------------------------------------
         default_center = [
             df_filtered["latitude"].mean(),
             df_filtered["longitude"].mean()
         ]
+
+        # ----------------------------------------------------
+        # 2. Decide center & zoom (DO NOT override later)
+        # ----------------------------------------------------
+        
+        # CASE A — Just selected a restaurant → force zoom + center
         if st.session_state.get("just_selected_restaurant"):
 
-            # Use stored center & zoom exactly
             center = st.session_state["map_center"]
             zoom = st.session_state["map_zoom"]
 
-            # Reset flag so next reruns act normal
+            # Clear the flag AFTER using the values
             st.session_state["just_selected_restaurant"] = False
 
         else:
-            # Normal behavior (keep last view)
+            # CASE B — Normal view → keep last position or default
             center = st.session_state.get("map_center", default_center)
             zoom = st.session_state.get("map_zoom", 12)
+
+        # ⭐ IMPORTANT:
+        # From this point on, 
+        # DO NOT modify "center" or "zoom" anywhere else in the file!
 
 
 
