@@ -322,37 +322,29 @@ with left_col:
 # RIGHT: Inspect & Predict
 # ===========================
 
-# --- RERUN GUARD ---
-if "right_col_done" not in st.session_state:
-    st.session_state["right_col_done"] = False
+with right_col:
+    st.subheader(" Inspect & Predict")
 
-# If last run triggered a rerun, skip executing right_col logic once
-if st.session_state["right_col_done"]:
-    st.session_state["right_col_done"] = False
-else:
+    google_mode = st.session_state.get("google_mode", False)
+    click = st.session_state.get("map_click")
 
-    with right_col:
-        st.subheader(" Inspect & Predict")
+    # ----------------------------------------------
+    # CASE 1 — No click at all
+    # ----------------------------------------------
+    if click is None:
+        st.info("Select a restaurant or click the map to begin.")
+        st.session_state["just_selected_restaurant"] = False
+        st.session_state["last_processed_click"] = None
+        # Do NOT rerun
+        # Do NOT return
+        pass
 
-        google_mode = st.session_state.get("google_mode", False)
-        click = st.session_state.get("map_click")
-
-        # ----------------------------------------------------------
-        # CASE 0 — No click yet
-        # ----------------------------------------------------------
-        if click is None:
-            st.info("Select a restaurant or click the map to begin.")
-            st.session_state["just_selected_restaurant"] = False
-            st.session_state["last_processed_click"] = None
-
-            st.session_state["right_col_done"] = True
-            st.rerun()
-
+    else:
         clat, clon = click
 
-        # ============================================================
-        # PRIORITY 1 — Dataset restaurant selection (dataset mode only)
-        # ============================================================
+        # ----------------------------------------------
+        # PRIORITY 1 — Dataset mode selection
+        # ----------------------------------------------
         if not google_mode and len(df_filtered) > 0:
 
             closest_row = None
@@ -373,7 +365,6 @@ else:
 
                 st.session_state["just_selected_restaurant"] = True
 
-                # UI
                 st.markdown("## 🍽️ Dataset Restaurant Selected")
 
                 name = closest_row.get("DBA") or closest_row.get("dba", "Unknown")
@@ -390,7 +381,6 @@ else:
                 if score is not None:
                     st.write(f"**Score:** {score}")
 
-                # Prediction
                 raw_restaurant = {
                     "borough": borough,
                     "zipcode": zipcode,
@@ -414,17 +404,15 @@ else:
                 for g_label, p in probs.items():
                     st.write(f"{g_label}: {p * 100:.1f}%")
 
-                # clear click
                 st.session_state["map_click"] = None
 
-                # Trigger safe rerun
-                st.session_state["right_col_done"] = True
-                st.rerun()
+                # NO RETURN, NO RERUN
+                # let the script finish normally
 
-        # ============================================================
-        # PRIORITY 2 — Google Nearby (Google Mode)
-        # ============================================================
-        if google_mode and st.session_state.get("google_nearby"):
+        # ----------------------------------------------
+        # PRIORITY 2 — Google nearby selection
+        # ----------------------------------------------
+        elif google_mode and st.session_state.get("google_nearby"):
 
             closest_place = None
             min_nb_dist = float("inf")
@@ -471,28 +459,21 @@ else:
                 for g_label, p in probs.items():
                     st.write(f"{g_label}: {p * 100:.1f}%")
 
-                # clear click
                 st.session_state["map_click"] = None
 
-                st.session_state["right_col_done"] = True
-                st.rerun()
+        # ----------------------------------------------
+        # PRIORITY 3 — Plain map click
+        # ----------------------------------------------
+        else:
+            zipcode, borough, address = reverse_geocode(clat, clon)
 
-        # ============================================================
-        # PRIORITY 3 — Click on map without selecting any marker
-        # ============================================================
-        zipcode, borough, address = reverse_geocode(clat, clon)
+            st.markdown("## 📍 Map Click Detected")
+            st.write(f"**Address:** {address or 'Unknown'}")
+            st.write(f"**ZIP:** {zipcode or 'Unknown'}")
+            st.write(f"**Borough:** {borough or 'Unknown'}")
+            st.info("Click a restaurant marker to see the predicted grade.")
 
-        st.markdown("## 📍 Map Click Detected")
-        st.write(f"**Address:** {address or 'Unknown'}")
-        st.write(f"**ZIP:** {zipcode or 'Unknown'}")
-        st.write(f"**Borough:** {borough or 'Unknown'}")
-        st.info("Click a restaurant marker to see the predicted grade.")
-
-        st.session_state["map_click"] = None
-        st.session_state["right_col_done"] = True
-        st.rerun()
-
-
+            st.session_state["map_click"] = None
 
 
 
