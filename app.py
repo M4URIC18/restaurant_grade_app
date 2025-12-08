@@ -723,3 +723,46 @@ if "cuisine_description" in df_filtered.columns and len(df_filtered) > 0:
 else:
     # No rows after filtering → handle gracefully
     st.info("No cuisine data available for this filter.")
+
+
+
+
+
+# ---- Most Common Violations ----
+st.subheader("Most Common Violation Types")
+
+# Ensure the column exists and dataframe not empty
+if "violation_code" in df_filtered.columns and len(df_filtered) > 0:
+
+    # Build violation count table
+    violation_counts = (
+        df_filtered["violation_code"]
+        .value_counts()
+        .reset_index()
+        .rename(columns={"index": "violation_code", "violation_code": "count"})
+    )
+
+    # Show only top 10 most common violation codes
+    violation_counts = violation_counts.head(10)
+
+    if len(violation_counts) == 0:
+        st.info("No violation data available for this filter.")
+    else:
+        # Proceed to chart (added next)
+        chart_violations = (
+            alt.Chart(violation_counts)
+            .mark_bar()
+            .encode(
+                x=alt.X("violation_code:N", sort="-y", title="Violation Code"),
+                y=alt.Y("count:Q", title="Count"),
+                color=alt.Color("violation_code:N", legend=None),
+                tooltip=["violation_code:N", "count:Q"]
+            )
+            .properties(height=350)
+        )
+
+        st.altair_chart(chart_violations, use_container_width=True)
+
+
+else:
+    st.info("No violation data available for this filter.")
