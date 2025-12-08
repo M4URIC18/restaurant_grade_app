@@ -3,6 +3,8 @@ import pandas as pd
 import folium
 import os
 import requests
+import matplotlib.pyplot as plt
+
 
 from streamlit_folium import st_folium
 
@@ -648,7 +650,7 @@ if cuisine_scores is not None and len(best_cuisines) > 0:
     st.markdown("#### 🥇 Top 10 Best Cuisines (Lowest Average Score)")
 
     st.bar_chart(best_cuisines)
-    
+
 # ---- Top 10 Worst Cuisines (Bar Chart) ----
 if cuisine_scores is not None and len(worst_cuisines) > 0:
     st.markdown("#### 🚨 Top 10 Worst Cuisines (Highest Average Score)")
