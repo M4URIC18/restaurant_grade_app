@@ -53,7 +53,7 @@ def to_dataframe(feature_dict: dict) -> pd.DataFrame:
     row = [feature_dict.get(col, 0) for col in FEATURE_COLUMNS]
 
     # Debug (you can comment these out later)
-    print("DEBUG FEATURE TYPES:")
+    
     for k, v in feature_dict.items():
         print(k, type(v), v)
 
@@ -82,7 +82,6 @@ def predict_from_features(feature_dict: dict) -> dict:
     else:
         prob_dict = {}
 
-    print("DEBUG row to model:", X.dtypes)
     print(X)
 
     return {

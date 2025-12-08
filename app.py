@@ -255,7 +255,12 @@ with left_col:
         google_data = st.session_state.get("google_nearby", [])
 
         # 4. Build map
-        m = build_map(center, zoom, df_for_map, google_data, google_mode)
+        @st.cache_data(show_spinner=False)
+        def cached_build_map(center, zoom, df_for_map, google_data, google_mode):
+            return build_map(center, zoom, df_for_map, google_data, google_mode)
+
+        m = cached_build_map(center, zoom, df_for_map, google_data, google_mode)
+
 
         # 5. Render map
         map_data = st_folium(
@@ -315,7 +320,10 @@ with right_col:
     st.subheader(" Inspect & Predict")
 
     google_mode = st.session_state.get("google_mode", False)
-    has_click = st.session_state.get("map_click") is not None
+    has_click = (
+        st.session_state.get("map_click") is not None
+        and st.session_state.get("just_selected_restaurant")
+    )
 
     # -----------------------------------------
     # PRIORITY 1 — Dataset restaurant (CSV) click (only in dataset mode)
@@ -381,6 +389,8 @@ with right_col:
                 st.write(f"{g_label}: {p * 100:.1f}%")
 
             st.markdown("---")
+
+            st.session_state["map_click"] = None
             st.stop()
 
     # -----------------------------------------
