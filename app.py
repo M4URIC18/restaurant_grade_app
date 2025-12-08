@@ -390,7 +390,7 @@ with left_col:
         if c in df_filtered.columns
     ]
 
-    st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
+    # st.dataframe(df_filtered[cols_to_show].head(300), width="stretch")
 
 
 
