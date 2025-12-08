@@ -299,7 +299,8 @@ with left_col:
                     with st.spinner("🔍 Searching nearby restaurants..."):
                         places = google_nearby_restaurants(click[0], click[1])
                     st.session_state["google_nearby"] = places
-                st.rerun()
+                st.session_state["force_refresh"] = not st.session_state.get("force_refresh", False)
+                st.stop()
 
         # 8. Table of filtered restaurants
         st.markdown("### Restaurants in this area")
