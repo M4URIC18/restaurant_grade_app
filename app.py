@@ -10,11 +10,6 @@ from streamlit_folium import st_folium
 
 from src.data_loader import get_data
 
-# from src.predictor import (
-#     predict_from_google,
-#     predict_from_dataset_row,
-#     predict_from_raw_restaurant
-# )
 from src.predictor import predict_from_raw_restaurant
 
 
@@ -34,6 +29,17 @@ from src.places import (
 )
 
 print(">>> APP STARTED")
+
+
+import streamlit as st
+
+if "rerun_count" not in st.session_state:
+    st.session_state["rerun_count"] = 0
+
+st.session_state["rerun_count"] += 1
+st.write("🔁 RERUN:", st.session_state["rerun_count"])
+
+
 
 @st.cache_data
 def load_filtered_data():
@@ -188,44 +194,44 @@ def build_map(center, zoom, df_for_map, google_nearby_data):
         )
         marker.add_to(m)
 
-    # -------------------------------------------------
-    # 2. Google Nearby markers
-    # -------------------------------------------------
-    if google_nearby_data:
-        for place in google_nearby_data:
-            plat = place["geometry"]["location"]["lat"]
-            plon = place["geometry"]["location"]["lng"]
-            name = place.get("name", "Unknown")
-            pid = place.get("place_id")
+    # # -------------------------------------------------
+    # # 2. Google Nearby markers
+    # # -------------------------------------------------
+    # if google_nearby_data:
+    #     for place in google_nearby_data:
+    #         plat = place["geometry"]["location"]["lat"]
+    #         plon = place["geometry"]["location"]["lng"]
+    #         name = place.get("name", "Unknown")
+    #         pid = place.get("place_id")
 
-            # Highlight selected restaurant (orange)
-            selected = (
-                st.session_state.get("google_restaurant_nearby") and
-                st.session_state["google_restaurant_nearby"].get("place_id") == pid
-            )
+    #         # Highlight selected restaurant (orange)
+    #         selected = (
+    #             st.session_state.get("google_restaurant_nearby") and
+    #             st.session_state["google_restaurant_nearby"].get("place_id") == pid
+    #         )
 
-            tooltip_text = f"⭐ {name}" if selected else name
-            radius = 8 if selected else 5
-            color = "#ff8800" if selected else "#1e90ff"
+    #         tooltip_text = f"⭐ {name}" if selected else name
+    #         radius = 8 if selected else 5
+    #         color = "#ff8800" if selected else "#1e90ff"
 
-            popup_html = f"""
-            <div style='font-size:14px;'>
-                <b>{name}</b><br>
-                <i>(Google Nearby Restaurant)</i>
-            </div>
-            """
+    #         popup_html = f"""
+    #         <div style='font-size:14px;'>
+    #             <b>{name}</b><br>
+    #             <i>(Google Nearby Restaurant)</i>
+    #         </div>
+    #         """
 
-            marker = folium.CircleMarker(
-                location=[plat, plon],
-                radius=radius,
-                popup=folium.Popup(popup_html, max_width=250),
-                color=color,
-                fill=True,
-                fill_opacity=0.9
-            )
+    #         marker = folium.CircleMarker(
+    #             location=[plat, plon],
+    #             radius=radius,
+    #             popup=folium.Popup(popup_html, max_width=250),
+    #             color=color,
+    #             fill=True,
+    #             fill_opacity=0.9
+    #         )
 
-            folium.Tooltip(tooltip_text).add_to(marker)
-            marker.add_to(m)
+    #         folium.Tooltip(tooltip_text).add_to(marker)
+    #         marker.add_to(m)
 
     return m
 
