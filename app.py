@@ -423,13 +423,13 @@ with right_col:
         closest_row = None
         min_ds_dist = float("inf")
 
-        for _, row in df_filtered.iterrows():
-            if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
-                continue
-            d2 = _dist2(clat, clon, row["latitude"], row["longitude"])
-            if d2 < min_ds_dist:
-                min_ds_dist = d2
-                closest_row = row
+        # for _, row in df_filtered.iterrows():
+        #     if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+        #         continue
+        #     d2 = _dist2(clat, clon, row["latitude"], row["longitude"])
+        #     if d2 < min_ds_dist:
+        #         min_ds_dist = d2
+        #         closest_row = row
 
         # Very close to a dataset marker
         if closest_row is not None and min_ds_dist < 0.00002:
