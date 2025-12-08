@@ -296,9 +296,13 @@ with right_col:
 
         # ENABLED: find nearest **dataset** restaurant to the click
         for _, row in df_filtered.iterrows():
-            if pd.isna(row["latitude"]) or pd.isna(row["longitude"]):
+            lat = row.get("latitude")
+            lon = row.get("longitude")
+            if pd.isna(lat) or pd.isna(lon):
                 continue
-            d2 = _dist2(clat, clon, row["latitude"], row["longitude"])
+
+            d2 = _dist2(clat, clon, lat, lon)
+
             if d2 < min_ds_dist:
                 min_ds_dist = d2
                 closest_row = row
