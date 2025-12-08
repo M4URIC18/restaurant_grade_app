@@ -323,7 +323,9 @@ with left_col:
 # ===========================
 if st.session_state.get("right_col_done"):
     st.session_state["right_col_done"] = False
-    
+    # IMPORTANT: DO NOT rerun here
+    # st.rerun()  # ❌ remove this
+
 
 with right_col:
     st.subheader(" Inspect & Predict")
@@ -379,7 +381,6 @@ with right_col:
             if score is not None:
                 st.write(f"**Score:** {score}")
 
-            # Prediction
             raw_restaurant = {
                 "borough": borough,
                 "zipcode": zipcode,
@@ -403,7 +404,6 @@ with right_col:
             for g_label, p in probs.items():
                 st.write(f"{g_label}: {p * 100:.1f}%")
 
-            # Clear click so it doesn't reprocess
             st.session_state["map_click"] = None
             st.session_state["right_col_done"] = True
             st.rerun()
@@ -461,7 +461,7 @@ with right_col:
             st.rerun()
 
     # ============================================================
-    # PRIORITY 3 — Click on map without selecting any marker
+    # PRIORITY 3 — Raw map click
     # ============================================================
     zipcode, borough, address = reverse_geocode(clat, clon)
 
@@ -474,6 +474,7 @@ with right_col:
     st.session_state["map_click"] = None
     st.session_state["right_col_done"] = True
     st.rerun()
+
 
 
 
