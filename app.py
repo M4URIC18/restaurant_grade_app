@@ -219,6 +219,23 @@ with left_col:
         df_for_map = df_filtered.head(2000)
         google_data = st.session_state.get("google_nearby", [])
 
+
+
+        # If the user is zooming, do not rebuild the map
+        if map_data and map_data.get("zoom") != zoom:
+            # use cached map; ignore live rebuild
+            if "last_map_object" in st.session_state:
+                m = st.session_state["last_map_object"]
+                map_data = st_folium(
+                    m,
+                    width="100%",
+                    height=500,
+                    key="main_map",
+                    returned_objects=["last_clicked", "center", "zoom"]
+                )
+                st.stop()
+
+
         # ---- 2. Build map (cached, fast) ----
         if "last_map_inputs" not in st.session_state:
             st.session_state["last_map_inputs"] = None
@@ -228,7 +245,7 @@ with left_col:
         current_inputs = {
             "center": tuple(center),
             "zoom": zoom,
-            "df_hash": hash(tuple(df_for_map.index)),
+            "df_count": len(df_for_map),
             "google_count": len(google_data),
         }
 
@@ -251,15 +268,23 @@ with left_col:
             returned_objects=["last_clicked", "center", "zoom"]
         )
 
-        # ---- 4. Update center/zoom (safe) ----
+        # ---- 4. Update center/zoom (SAFE: ignore zoom changes during zooming) ----
         if map_data:
             new_center = map_data.get("center")
             new_zoom = map_data.get("zoom")
 
-            if new_center:
+            # Only save center if user dragged (not zoom)
+            if new_center and tuple(new_center.values()) != tuple(center):
                 st.session_state["map_center"] = [new_center["lat"], new_center["lng"]]
-            if new_zoom:
+
+            # DO NOT SAVE new zoom on every event, ONLY if user clicked a marker
+            if (
+                new_zoom 
+                and "google_restaurant" in st.session_state  # we have real selection
+                and st.session_state["google_restaurant"] is not None
+            ):
                 st.session_state["map_zoom"] = new_zoom
+
 
         # ---- 5. Handle NEW clicks ONLY ----
                 # ---- 5. Handle NEW clicks ONLY ----
