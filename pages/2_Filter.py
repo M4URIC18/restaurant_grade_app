@@ -143,13 +143,31 @@ if score_range is not None and "score" in df_filtered.columns:
         (df_filtered["score"] >= low) & (df_filtered["score"] <= high)
     ]
 
-st.write("Unique critical_flag values:", df["critical_flag"].unique().tolist())
-# Critical filter
+
+# -------------------------------------------------
+# Critical filter (matches dataset's 3 values)
+# -------------------------------------------------
 if critical_col is not None and critical_choice != "All":
+
+    # Normalize the column (lowercase, strip spaces)
+    col = (
+        df_filtered[critical_col]
+        .astype(str)
+        .str.lower()
+        .str.strip()
+    )
+
+    # Define normalized groups
+    is_critical        = col == "critical"
+    is_not_critical    = col == "not critical"
+    is_not_applicable  = col == "not applicable"
+
     if critical_choice == "Critical only":
-        df_filtered = df_filtered[df_filtered[critical_col] == 1]
+        df_filtered = df_filtered[is_critical]
+
     elif critical_choice == "Non-critical only":
-        df_filtered = df_filtered[df_filtered[critical_col] == 0]
+        # Only restaurants marked as "Not Critical"
+        df_filtered = df_filtered[is_not_critical]
 
 
 # -------------------------------------------------
