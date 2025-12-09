@@ -268,7 +268,7 @@ else:
 # Best & Worst Cuisines
 # -------------------------------------------------
 st.markdown("---")
-st.subheader("Best & Worst Cuisines (Average Score)")
+st.markdown("<h3 style='text-align:center;'>Best & Worst Cuisines (Average Score)</h3>", unsafe_allow_html=True)
 
 if "cuisine_description" in df_filtered.columns and "score" in df_filtered.columns:
     cuisine_scores = (
