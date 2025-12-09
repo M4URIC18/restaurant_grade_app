@@ -1,59 +1,95 @@
 # pages/1_About.py
 import streamlit as st
+import pandas as pd
 
 st.set_page_config(page_title="About CleanKitchen NYC", layout="wide")
 
-# ----------------------------------------------
-# CUSTOM STYLE (minimal but modern)
-# ----------------------------------------------
-ACCENT = "#3A86FF"  # choose your brand color (blue)
+# -------------------------------------------------
+# GLOBAL THEME COLORS
+# -------------------------------------------------
+ACCENT = "#4F8BF9"     # Clean modern blue
+CARD_BG = "#FFFFFF"
+TEXT_LIGHT = "#666666"
+
+# -------------------------------------------------
+# GLOBAL CSS (applies to whole page)
+# -------------------------------------------------
 st.markdown(
     f"""
     <style>
-        h1, h2, h3 {{
-            font-family: 'Inter', sans-serif;
-            letter-spacing: -0.5px;
-        }}
 
-        .section-title {{
-            padding-left: 8px;
-            border-left: 4px solid {ACCENT};
-        }}
+    /* Page background */
+    .main {{
+        background-color: #F9FAFB !important;
+    }}
 
-        .card:hover {{
-            transform: translateY(-3px);
-            transition: 0.15s ease-in-out;
-            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
-        }}
+    /* Card style */
+    .ck-card {{
+        background: {CARD_BG};
+        padding: 24px;
+        border-radius: 14px;
+        box-shadow: 0 2px 10px rgba(0,0,0,0.06);
+        border-left: 4px solid {ACCENT};
+        transition: 0.2s ease;
+    }}
+
+    .ck-card:hover {{
+        transform: translateY(-3px);
+        box-shadow: 0 4px 14px rgba(0,0,0,0.10);
+    }}
+
+    /* Section titles */
+    .section-title {{
+        font-size: 28px;
+        font-weight: 700;
+        margin-bottom: 10px;
+        color: #222;
+    }}
+
+    .subtext {{
+        color: {TEXT_LIGHT};
+        font-size: 18px;
+        line-height: 1.5;
+    }}
+
+    /* Timeline style */
+    .timeline {{
+        border-left: 3px solid {ACCENT};
+        margin-left: 10px;
+        padding-left: 25px;
+    }}
+
+    .timeline-item {{
+        margin-bottom: 30px;
+        position: relative;
+    }}
+
+    .timeline-item::before {{
+        content: "";
+        width: 14px;
+        height: 14px;
+        background: {ACCENT};
+        border-radius: 50%;
+        position: absolute;
+        left: -31px;
+        top: 3px;
+        box-shadow: 0 0 0 3px #E3ECFF;
+    }}
     </style>
     """,
     unsafe_allow_html=True
 )
 
-
-st.markdown(
-    """
-    <style>
-        body {
-            background-color: #F6F7FB !important;
-        }
-    </style>
-    """,
-    unsafe_allow_html=True,
-)
-
-
-
-# ----------------------------------------------
+# -------------------------------------------------
 # HERO SECTION
-# ----------------------------------------------
+# -------------------------------------------------
 st.markdown(
-    """
-    <div style='text-align:center; padding: 30px 10px;'>
-        <h1 style='font-size:42px; margin-bottom:10px;'>🍽️ CleanKitchen NYC</h1>
-        <p style='font-size:20px; color: #666;'>
-            A modern tool that predicts NYC restaurant health grades using real inspection data,<br>
-            demographics, machine learning, and interactive map exploration.
+    f"""
+    <div style='text-align:center; padding: 40px 10px;'>
+        <h1 style='font-size:46px; margin-bottom:5px;'>🍽️ CleanKitchen NYC</h1>
+        <p style='font-size:20px; color:{TEXT_LIGHT}; max-width:750px; margin:auto;'>
+            A modern, data-driven tool that predicts NYC restaurant health grades using 
+            machine learning, open data, neighborhood demographics, and interactive maps.
         </p>
     </div>
     """,
@@ -62,32 +98,19 @@ st.markdown(
 
 st.markdown("---")
 
-# ----------------------------------------------
-# PROJECT HIGHLIGHTS
-# ----------------------------------------------
-st.markdown("<h2 class='section-title'> What This App Does</h2>", unsafe_allow_html=True)
-st.write(
-    """
-    CleanKitchen NYC helps users explore NYC restaurants through:
-    """
-)
+# -------------------------------------------------
+# PROJECT HIGHLIGHTS — MODERN CARDS
+# -------------------------------------------------
+st.markdown("<h2 class='section-title'>✨ What This App Does</h2>", unsafe_allow_html=True)
 
 col1, col2, col3 = st.columns(3)
-
-ACCENT = "#4C9AFF"  # or whatever accent color you want
 
 with col1:
     st.markdown(
         f"""
-        <div class='card' 
-             style='background:#FAFAFA; 
-                    padding:20px; 
-                    border-radius:12px; 
-                    border-top:4px solid {ACCENT}; 
-                    box-shadow:0 0 8px rgba(0,0,0,0.08);
-                    color:#333;'>
-            <h3 style='color:#222;'>🗺️ Interactive Map</h3>
-            <p>Search and explore all NYC restaurants using Google Places or official DOH records.</p>
+        <div class='ck-card'>
+            <h3>🗺️ Interactive Map</h3>
+            <p class='subtext'>Explore all NYC restaurants with live search and DOH inspection data.</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -96,15 +119,9 @@ with col1:
 with col2:
     st.markdown(
         f"""
-        <div class='card' 
-             style='background:#FAFAFA; 
-                    padding:20px; 
-                    border-radius:12px; 
-                    border-top:4px solid {ACCENT}; 
-                    box-shadow:0 0 8px rgba(0,0,0,0.08);
-                    color:#333;'>
-            <h3 style='color:#222;'>🧠 ML Grade Predictions</h3>
-            <p>Our trained model uses 17+ features to predict A, B, or C grades.</p>
+        <div class='ck-card'>
+            <h3>🧠 ML Grade Predictions</h3>
+            <p class='subtext'>Predict A/B/C grades using 17+ features from inspections and demographics.</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -113,107 +130,85 @@ with col2:
 with col3:
     st.markdown(
         f"""
-        <div class='card' 
-             style='background:#FAFAFA; 
-                    padding:20px; 
-                    border-radius:12px; 
-                    border-top:4px solid {ACCENT}; 
-                    box-shadow:0 0 8px rgba(0,0,0,0.08);
-                    color:#333;'>
-            <h3 style='color:#222;'>📊 Filter & Insights</h3>
-            <p>Analyze patterns across boroughs, cuisines, scores, and violations.</p>
+        <div class='ck-card'>
+            <h3>📊 Filters & Insights</h3>
+            <p class='subtext'>Analyze patterns by borough, cuisine, violations, and score distributions.</p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-
 st.markdown("---")
 
-# ----------------------------------------------
-# HOW IT WORKS
-# ----------------------------------------------
-st.markdown("<h2 class='section-title'> How the System Works</h2>", unsafe_allow_html=True)
-with st.expander("📊 See a sample distribution chart"):
-    import pandas as pd
-    import altair as alt
+# -------------------------------------------------
+# HOW IT WORKS — TIMELINE STYLE
+# -------------------------------------------------
+st.markdown("<h2 class='section-title'>🔧 How the System Works</h2>", unsafe_allow_html=True)
 
-    try:
-        df = pd.read_csv("data/df_merged_big.csv")
-        chart = (
-            alt.Chart(df.head(200))
-            .mark_bar()
-            .encode(
-                x="score:Q",
-                y="count()"
-            )
-        )
-        st.altair_chart(chart, use_container_width=True)
-    except Exception:
-        st.info("Dataset not available or could not be loaded.")
-
-
-
+st.markdown("<div class='timeline'>", unsafe_allow_html=True)
 
 st.markdown(
     """
-    <div style='background:#FFFFFF; padding:25px; border-radius:12px; box-shadow:0 0 8px rgba(0,0,0,0.05);'>
-        
+    <div class='timeline-item'>
         <h3>📦 Data Sources</h3>
-        <ul>
-            <li><b>NYC DOH Inspection History</b> — 292k+ inspection records.</li>
-            <li><b>NYC Demographics</b> — ZIP-level income, poverty rate, ethnicity mix, population.</li>
-            <li><b>Google Places API</b> — Live restaurant search for current listings.</li>
-        </ul>
-
-        <p style='color:#666; font-size:15px; margin-top:-10px;'>
-            These datasets are merged to build a detailed profile for each restaurant.
+        <p class='subtext'>
+            • NYC DOH inspection history (292,000+ records)<br>
+            • ZIP-code demographic stats (income, poverty rate, ethnicity mix)<br>
+            • Google Places API for real-time restaurant lookup
         </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
+st.markdown(
+    """
+    <div class='timeline-item'>
         <h3>🧠 Machine Learning Model</h3>
-        <p>
-            A <b>Random Forest classifier</b> is trained using 17+ engineered features, including:
+        <p class='subtext'>
+            Our Random Forest model uses over 17 features including:<br>
+            – Inspection score<br>
+            – ZIP demographics<br>
+            – Borough and cuisine<br>
+            – Violation history<br>
+            to predict A/B/C grades instantly.
         </p>
-        <ul>
-            <li>Inspection score & critical flag</li>
-            <li>Borough and ZIP code</li>
-            <li>Cuisine category</li>
-            <li>Demographic indicators (income, poverty, ethnicity)</li>
-            <li>Violation patterns</li>
-        </ul>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-        <p style='margin-top:10px;'>
-            The model outputs a predicted health grade (<b>A</b>, <b>B</b>, or <b>C</b>) 
-            along with confidence percentages.
+st.markdown(
+    """
+    <div class='timeline-item'>
+        <h3>🖥️ Tech Stack</h3>
+        <p class='subtext'>
+            Python • Streamlit • Pandas • Scikit-Learn • Folium • Altair • Google Places API
         </p>
+    </div>
+    """,
+    unsafe_allow_html=True
+)
 
-        <h4>📈 Model Performance</h4>
-        <ul>
-            <li>Accuracy: <b>~84%</b></li>
-            <li>5-fold cross-validation</li>
-            <li>Feature importance weighted toward score, ZIP stats, and cuisine</li>
+st.markdown("</div>", unsafe_allow_html=True)
+
+st.markdown("---")
+
+# -------------------------------------------------
+# ROADMAP — Clean Layout
+# -------------------------------------------------
+st.markdown("<h2 class='section-title'>🚀 Roadmap</h2>", unsafe_allow_html=True)
+
+st.markdown(
+    f"""
+    <div class='ck-card' style='border-left: 4px solid {ACCENT};'>
+        <ul class='subtext'>
+            <li>📱 Mobile-first redesign</li>
+            <li>🌙 Dark mode</li>
+            <li>🧬 More insights in prediction panel</li>
+            <li>📍 Neighborhood & cuisine profile pages</li>
+            <li>🕒 Real-time DOH inspection updates</li>
         </ul>
-
-        <h3>🖥️ Technology Stack</h3>
-        <p>
-            <b>Python</b> · Streamlit · Scikit-Learn · Pandas · Folium · Altair · Google Places API
-        </p>
-
-        <h3>⚠️ Limitations</h3>
-        <ul>
-            <li>Predictions rely on past inspection patterns.</li>
-            <li>Some ZIP codes and cuisines have limited data.</li>
-            <li>Google Places data may not fully align with DOH records.</li>
-        </ul>
-        
-        <h3>🔄 Prediction Pipeline</h3>
-        <ol>
-            <li>User selects a restaurant or clicks the map</li>
-            <li>The app builds a feature vector for that location</li>
-            <li>The ML model evaluates risk patterns</li>
-            <li>Grade + confidence is displayed instantly</li>
-        </ol>
-
     </div>
     """,
     unsafe_allow_html=True
@@ -221,34 +216,31 @@ st.markdown(
 
 st.markdown("---")
 
-# ----------------------------------------------
-# ROADMAP
-# ----------------------------------------------
-st.subheader("🚀 Roadmap")
+# -------------------------------------------------
+# CREATOR SECTION
+# -------------------------------------------------
+st.markdown("<h2 class='section-title'>👤 Created By</h2>", unsafe_allow_html=True)
 
-st.markdown(
-    """
-    Coming in the next updates:
-    - 📱 Mobile-first redesign  
-    - 🌙 Dark mode  
-    - 🧬 More features in prediction panel (risk explanation, confidence bars)  
-    - 📍 Neighborhood-level profile pages  
-    - 🍲 Cuisine health profile pages  
-    - 🕒 DOH real-time inspection updates  
-    """
-)
+colA, colB = st.columns([1,2])
+
+with colA:
+    st.image("https://avatars.githubusercontent.com/u/9919?s=280&v=4", width=120)
+
+with colB:
+    st.markdown(
+        f"""
+        <p class='subtext'>
+            Built by **Jack, Mauricio, and Dominik** — Data Science & CS Fellows.<br>
+            Interested in collaboration or improvements?
+        </p>
+        """,
+        unsafe_allow_html=True
+    )
+
+    col1, col2 = st.columns(2)
+    col1.link_button("GitHub", "https://github.com/")
+    col2.link_button("LinkedIn", "https://linkedin.com/")
 
 st.markdown("---")
 
-# ----------------------------------------------
-# CREDITS / CONTACT
-# ----------------------------------------------
-st.subheader("👤 Created By")
-
-st.markdown(
-    """
-    **Jack, Mauricio, Dominik** — Developer, Data Scientist fellow.  
-    Feel free to reach out for collaboration or improvements!
-    """
-)
-
+st.markdown("<p style='text-align:center; color:#999;'>Thanks for visiting CleanKitchen NYC!</p>", unsafe_allow_html=True)
