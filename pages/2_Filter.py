@@ -1,190 +1,233 @@
 # pages/2_Filter.py
 
 import streamlit as st
-import pandas as pd
 import altair as alt
+import pandas as pd
 
 from src.data_loader import get_data
-from src.utils import (
-    VIOLATION_SHORT,
-    UNKNOWN_VIOLATION_LABEL,
-    get_grade_color
-)
+from src.utils import VIOLATION_SHORT, UNKNOWN_VIOLATION_LABEL, get_grade_color
 
-# ==========================================================
-# PAGE CONFIG
-# ==========================================================
-st.set_page_config(page_title="Filter & Analytics", layout="wide")
-
-st.title("🔍 Filter & Analyze NYC Restaurants")
-st.write(
-    "Use the filters on the left to narrow restaurants and explore insights. "
-    "Charts update automatically based on your selections."
-)
-
-# ==========================================================
-# LOAD DATA
-# ==========================================================
+# -------------------------------------------------
+# Load data
+# -------------------------------------------------
 df = get_data()
 
-# Safety guard
-if df is None or len(df) == 0:
-    st.error("❌ Could not load restaurant dataset.")
-    st.stop()
+st.title("Filter & Insights")
 
-# ==========================================================
-# SIDEBAR FILTERS
-# ==========================================================
-st.sidebar.header("📌 Filters")
-
-# ---- Borough filter ----
-boroughs = sorted(df["borough"].dropna().unique())
-select_borough = st.sidebar.multiselect(
-    "Borough",
-    boroughs,
-    default=boroughs
+st.markdown(
+    """
+Use the filters on the left to narrow down NYC restaurants, 
+then explore grade patterns, violations, and cuisine rankings.
+"""
 )
 
-# ---- ZIP filter ----
-valid_zip_df = df[df["borough"].isin(select_borough)]
-zips = sorted(valid_zip_df["zipcode"].dropna().unique().astype(str))
+# -------------------------------------------------
+# Sidebar Filters (with explicit keys)
+# -------------------------------------------------
+st.sidebar.header("Filters")
 
-select_zip = st.sidebar.multiselect(
-    "ZIP Codes",
-    zips,
-    default=zips[:20]  # avoid selecting thousands at once
-)
+# Widget keys (so we can reset them)
+BOROUGH_KEY = "filter_borough"
+CUISINE_KEY = "filter_cuisine"
+ZIP_KEY = "filter_zipcode"
+CRIT_KEY = "filter_critical"
+SCORE_KEY = "filter_score_range"
 
-# ---- Cuisine filter ----
-cuisines = sorted(df["cuisine_description"].dropna().unique())
-select_cuisine = st.sidebar.multiselect(
-    "Cuisine Type",
-    cuisines,
-)
+# Boroughs
+if "boro" in df.columns:
+    all_boros = sorted(df["boro"].dropna().unique())
+    selected_boros = st.sidebar.multiselect(
+        "Borough",
+        options=all_boros,
+        key=BOROUGH_KEY,
+    )
+else:
+    selected_boros = []
+    st.sidebar.info("No borough column found in data.")
 
-# ---- Score range filter ----
-min_score = float(df["score"].min())
-max_score = float(df["score"].max())
+# Cuisine
+if "cuisine_description" in df.columns:
+    all_cuisines = sorted(df["cuisine_description"].dropna().unique())
+    selected_cuisines = st.sidebar.multiselect(
+        "Cuisine",
+        options=all_cuisines,
+        key=CUISINE_KEY,
+    )
+else:
+    selected_cuisines = []
+    st.sidebar.info("No cuisine column found in data.")
 
-score_range = st.sidebar.slider(
-    "Inspection Score Range",
-    min_score,
-    max_score,
-    (min_score, max_score),
-)
+# Zipcode
+if "zipcode" in df.columns:
+    # ensure string for consistent filter
+    df["zipcode"] = df["zipcode"].astype(str)
+    all_zips = sorted(df["zipcode"].dropna().unique())
+    selected_zips = st.sidebar.multiselect(
+        "ZIP Code",
+        options=all_zips,
+        key=ZIP_KEY,
+    )
+else:
+    selected_zips = []
+    st.sidebar.info("No zipcode column found in data.")
 
-# ---- Critical flag filter ----
-crit_vals = ["0 (Not Critical)", "1 (Critical)"]
-select_critical = st.sidebar.multiselect(
-    "Critical Flag",
-    crit_vals,
-)
+# Score range
+if "score" in df.columns:
+    min_score = int(df["score"].min())
+    max_score = int(df["score"].max())
+    score_range = st.sidebar.slider(
+        "Inspection Score Range",
+        min_value=min_score,
+        max_value=max_score,
+        value=(min_score, max_score),
+        key=SCORE_KEY,
+    )
+else:
+    score_range = None
+    st.sidebar.info("No score column found in data.")
 
-# ---- Reset button ----
-if st.sidebar.button("🔄 Reset Filters"):
+# Critical flag (works with critical_flag or critical_flag_bin)
+critical_col = None
+if "critical_flag_bin" in df.columns:
+    critical_col = "critical_flag_bin"
+elif "critical_flag" in df.columns:
+    critical_col = "critical_flag"
+
+critical_choice = "All"
+if critical_col is not None:
+    critical_choice = st.sidebar.radio(
+        "Critical Violations",
+        options=["All", "Critical only", "Non-critical only"],
+        key=CRIT_KEY,
+    )
+else:
+    st.sidebar.info("No critical flag column found in data.")
+
+# -------------------------------------------------
+# Clear Filters Button
+# -------------------------------------------------
+if st.sidebar.button("Clear filters"):
+    # Remove widget state so they reset to defaults
+    for key in [BOROUGH_KEY, CUISINE_KEY, ZIP_KEY, SCORE_KEY, CRIT_KEY]:
+        if key in st.session_state:
+            del st.session_state[key]
     st.rerun()
 
-# ==========================================================
-# APPLY FILTERS
-# ==========================================================
+# -------------------------------------------------
+# Apply Filters
+# -------------------------------------------------
 df_filtered = df.copy()
 
-if select_borough:
-    df_filtered = df_filtered[df_filtered["borough"].isin(select_borough)]
+# Borough filter
+if selected_boros:
+    df_filtered = df_filtered[df_filtered["boro"].isin(selected_boros)]
 
-if select_zip:
-    df_filtered = df_filtered[df_filtered["zipcode"].astype(str).isin(select_zip)]
+# Cuisine filter
+if selected_cuisines:
+    df_filtered = df_filtered[df_filtered["cuisine_description"].isin(selected_cuisines)]
 
-if select_cuisine:
-    df_filtered = df_filtered[df_filtered["cuisine_description"].isin(select_cuisine)]
+# ZIP filter
+if selected_zips and "zipcode" in df_filtered.columns:
+    df_filtered["zipcode"] = df_filtered["zipcode"].astype(str)
+    df_filtered = df_filtered[df_filtered["zipcode"].isin(selected_zips)]
 
 # Score filter
-df_filtered = df_filtered[
-    (df_filtered["score"] >= score_range[0]) &
-    (df_filtered["score"] <= score_range[1])
-]
-
-# Critical flag filter
-if select_critical:
-    crit_map = {
-        "0 (Not Critical)": 0,
-        "1 (Critical)": 1
-    }
+if score_range is not None and "score" in df_filtered.columns:
+    low, high = score_range
     df_filtered = df_filtered[
-        df_filtered["critical_flag_bin"].isin([crit_map[i] for i in select_critical])
+        (df_filtered["score"] >= low) & (df_filtered["score"] <= high)
     ]
 
-# ==========================================================
-# TOP INFO CARDS
-# ==========================================================
-st.markdown("---")
-st.subheader("📊 Summary")
+# Critical filter
+if critical_col is not None and critical_choice != "All":
+    # many datasets use 1 = critical, 0 = not critical
+    if critical_choice == "Critical only":
+        df_filtered = df_filtered[df_filtered[critical_col] == 1]
+    elif critical_choice == "Non-critical only":
+        df_filtered = df_filtered[df_filtered[critical_col] == 0]
 
-colA, colB, colC, colD = st.columns(4)
+# -------------------------------------------------
+# Summary
+# -------------------------------------------------
+st.markdown("### Current Filter Summary")
 
-total_rest = len(df_filtered)
-avg_score = df_filtered["score"].mean() if total_rest > 0 else 0
-top_cuisine = (
-    df_filtered["cuisine_description"].value_counts().idxmax()
-    if total_rest > 0 else "N/A"
-)
-borough_count = df_filtered["borough"].value_counts().to_dict()
+total = len(df)
+current = len(df_filtered)
 
-# Card A
-colA.metric("Total Restaurants", f"{total_rest:,}")
+st.write(f"Showing **{current}** restaurants out of **{total}** total.")
 
-# Card B
-colB.metric("Average Score", f"{avg_score:.1f}")
-
-# Card C
-colC.metric("Top Cuisine", top_cuisine)
-
-# Card D
-colD.write("**Borough Count:**")
-for boro, ct in borough_count.items():
-    colD.write(f"- {boro}: {ct}")
-
-# If nothing is found
-if total_rest == 0:
-    st.warning("⚠️ No restaurants match your filters.")
+if current == 0:
+    st.warning("No data matches your filters. Try relaxing the filters.")
     st.stop()
 
-# ==========================================================
-# CHARTS — ANALYTICS DASHBOARD
-# ==========================================================
-st.markdown("---")
-st.header("📈 Analytics Dashboard")
+# -------------------------------------------------
+# Layout: Overview metrics + charts
+# -------------------------------------------------
+col1, col2 = st.columns(2)
 
-# ====================================================================
-# 1. Grade Distribution Pie Chart
-# ====================================================================
-st.subheader("🎯 Grade Distribution")
-
-if "grade" in df_filtered.columns:
-    grade_counts = df_filtered["grade"].value_counts().reset_index()
-    grade_counts.columns = ["grade", "count"]
-
-    pie = (
-        alt.Chart(grade_counts)
-        .mark_arc()
-        .encode(
-            theta=alt.Theta("count:Q"),
-            color=alt.Color("grade:N"),
-            tooltip=["grade:N", "count:Q"],
+# ---- Grade distribution ----
+with col1:
+    st.subheader("Grade Distribution")
+    if "grade" in df_filtered.columns:
+        grade_counts = (
+            df_filtered["grade"]
+            .value_counts()
+            .reset_index()
         )
-    )
+        grade_counts.columns = ["grade", "count"]
 
-    st.altair_chart(pie, use_container_width=True)
-else:
-    st.info("No grade data available.")
+        chart = (
+            alt.Chart(grade_counts)
+            .mark_arc()
+            .encode(
+                theta=alt.Theta("count:Q", stack=True),
+                color=alt.Color("grade:N"),
+                tooltip=["grade:N", "count:Q"],
+            )
+        )
+        st.altair_chart(chart, width="stretch")
+    else:
+        st.info("No grade column in current data.")
 
-# ====================================================================
-# 2. Violation Breakdown
-# ====================================================================
-st.subheader("⚠️ Most Common Violations")
+# ---- Average score by borough ----
+with col2:
+    st.subheader("Average Score by Borough")
+    if "boro" in df_filtered.columns and "score" in df_filtered.columns:
+        boro_scores = (
+            df_filtered.groupby("boro")["score"]
+            .mean()
+            .reset_index()
+            .sort_values("score")
+        )
+
+        chart_boro = (
+            alt.Chart(boro_scores)
+            .mark_bar()
+            .encode(
+                x=alt.X("boro:N", sort="-y", title="Borough"),
+                y=alt.Y("score:Q", title="Average Score"),
+                tooltip=["boro:N", "score:Q"],
+                color=alt.Color("boro:N", legend=None),
+            )
+            .properties(height=300)
+        )
+
+        st.altair_chart(chart_boro, width="stretch")
+    else:
+        st.info("No borough/score data to plot.")
+
+# -------------------------------------------------
+# Most common violations
+# -------------------------------------------------
+st.markdown("---")
+st.subheader("Top Violations")
 
 if "violation_code" in df_filtered.columns:
-    violation_counts = df_filtered["violation_code"].value_counts().reset_index()
+    violation_counts = (
+        df_filtered["violation_code"]
+        .value_counts()
+        .reset_index()
+    )
     violation_counts.columns = ["violation_code", "count"]
 
     violation_counts["description"] = violation_counts["violation_code"].apply(
@@ -193,100 +236,77 @@ if "violation_code" in df_filtered.columns:
 
     violation_counts = violation_counts.head(10)
 
-    chart_violations = (
+    chart_viol = (
         alt.Chart(violation_counts)
         .mark_bar()
         .encode(
             x=alt.X("violation_code:N", sort="-y", title="Violation Code"),
             y=alt.Y("count:Q", title="Count"),
-            color=alt.Color("violation_code:N", legend=None),
             tooltip=["violation_code:N", "description:N", "count:Q"],
+            color=alt.Color("violation_code:N", legend=None),
         )
         .properties(height=350)
     )
 
-    st.altair_chart(chart_violations, use_container_width=True)
+    st.altair_chart(chart_viol, width="stretch")
 else:
-    st.info("No violation data available.")
+    st.info("No violation_code column in current data.")
 
-# ====================================================================
-# 3. Score Distribution Histogram
-# ====================================================================
-st.subheader("📉 Score Distribution")
+# -------------------------------------------------
+# Best & Worst Cuisines
+# -------------------------------------------------
+st.markdown("---")
+st.subheader("Best & Worst Cuisines (Average Score)")
 
-hist = (
-    alt.Chart(df_filtered)
-    .mark_bar()
-    .encode(
-        x=alt.X("score:Q", bin=True, title="Score"),
-        y=alt.Y("count()", title="Count"),
-        tooltip=["score:Q"]
+if "cuisine_description" in df_filtered.columns and "score" in df_filtered.columns:
+    cuisine_scores = (
+        df_filtered.groupby("cuisine_description")["score"]
+        .mean()
+        .sort_values()
     )
-    .properties(height=300)
-)
 
-st.altair_chart(hist, use_container_width=True)
+    if len(cuisine_scores) == 0:
+        st.info("No cuisine data for current filters.")
+    else:
+        best_cuisines = cuisine_scores.head(10)
+        worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
 
-# ====================================================================
-# 4. Cuisine Ranking
-# ====================================================================
-st.subheader("🍽️ Best & Worst Cuisine Types")
+        c1, c2 = st.columns(2)
 
-cuisine_scores = (
-    df_filtered.groupby("cuisine_description")["score"].mean().sort_values()
-)
+        with c1:
+            st.markdown("#### 🥇 Top 10 Best Cuisines")
+            best_df = best_cuisines.reset_index()
+            best_df.columns = ["cuisine_description", "score"]
 
-best = cuisine_scores.head(10).reset_index()
-best.columns = ["cuisine_description", "score"]
+            chart_best = (
+                alt.Chart(best_df)
+                .mark_bar()
+                .encode(
+                    x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+                    y=alt.Y("score:Q", title="Average Score (lower is better)"),
+                    tooltip=["cuisine_description:N", "score:Q"],
+                    color=alt.Color("cuisine_description:N", legend=None),
+                )
+                .properties(height=300)
+            )
+            st.altair_chart(chart_best, width="stretch")
 
-worst = cuisine_scores.tail(10).sort_values(ascending=False).reset_index()
-worst.columns = ["cuisine_description", "score"]
+        with c2:
+            st.markdown("#### 🚨 Top 10 Worst Cuisines")
+            worst_df = worst_cuisines.reset_index()
+            worst_df.columns = ["cuisine_description", "score"]
 
-c1, c2 = st.columns(2)
-
-with c1:
-    st.markdown("#### 🥇 Best 10 Cuisines")
-    chart_best = (
-        alt.Chart(best)
-        .mark_bar()
-        .encode(
-            x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
-            y=alt.Y("score:Q", title="Average Score"),
-            tooltip=["cuisine_description:N", "score:Q"],
-        )
-        .properties(height=300)
-    )
-    st.altair_chart(chart_best, use_container_width=True)
-
-with c2:
-    st.markdown("#### 🚨 Worst 10 Cuisines")
-    chart_worst = (
-        alt.Chart(worst)
-        .mark_bar()
-        .encode(
-            x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
-            y=alt.Y("score:Q", title="Average Score"),
-            tooltip=["cuisine_description:N", "score:Q"],
-        )
-        .properties(height=300)
-    )
-    st.altair_chart(chart_worst, use_container_width=True)
-
-# ====================================================================
-# 5. Borough Comparison
-# ====================================================================
-st.subheader("🏙️ Borough Comparison")
-
-borough_chart = (
-    alt.Chart(df_filtered)
-    .mark_bar()
-    .encode(
-        x=alt.X("borough:N", title="Borough"),
-        y=alt.Y("mean(score):Q", title="Average Score"),
-        tooltip=["borough:N", "mean(score):Q"]
-    )
-    .properties(height=300)
-)
-
-st.altair_chart(borough_chart, use_container_width=True)
-
+            chart_worst = (
+                alt.Chart(worst_df)
+                .mark_bar()
+                .encode(
+                    x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+                    y=alt.Y("score:Q", title="Average Score (higher is worse)"),
+                    tooltip=["cuisine_description:N", "score:Q"],
+                    color=alt.Color("cuisine_description:N", legend=None),
+                )
+                .properties(height=300)
+            )
+            st.altair_chart(chart_worst, width="stretch")
+else:
+    st.info("Not enough data to rank cuisines.")
