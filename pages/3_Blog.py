@@ -282,12 +282,12 @@ if selected and selected != "-- Select a post --":
     selected = st.selectbox(
         "Select a post to read:",
         ["-- Select a post --"] + list(POSTS.keys()),
-        key="selected_post",
+        key="blog_post_selector",
     )
 
     # Close button — correctly resets a widget-controlled session_state key
     if st.button("Close Post"):
-        st.session_state["selected_post"] = "-- Select a post --"
+        st.session_state["blog_post_selector"] = "-- Select a post --"
         st.rerun()
 
 else:
