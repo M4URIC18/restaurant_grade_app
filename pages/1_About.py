@@ -4,6 +4,47 @@ import streamlit as st
 st.set_page_config(page_title="About CleanKitchen NYC", layout="wide")
 
 # ----------------------------------------------
+# CUSTOM STYLE (minimal but modern)
+# ----------------------------------------------
+ACCENT = "#3A86FF"  # choose your brand color (blue)
+st.markdown(
+    f"""
+    <style>
+        h1, h2, h3 {{
+            font-family: 'Inter', sans-serif;
+            letter-spacing: -0.5px;
+        }}
+
+        .section-title {{
+            padding-left: 8px;
+            border-left: 4px solid {ACCENT};
+        }}
+
+        .card:hover {{
+            transform: translateY(-3px);
+            transition: 0.15s ease-in-out;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.12);
+        }}
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
+st.markdown(
+    """
+    <style>
+        body {
+            background-color: #F6F7FB !important;
+        }
+    </style>
+    """,
+    unsafe_allow_html=True,
+)
+
+
+
+# ----------------------------------------------
 # HERO SECTION
 # ----------------------------------------------
 st.markdown(
@@ -24,7 +65,7 @@ st.markdown("---")
 # ----------------------------------------------
 # PROJECT HIGHLIGHTS
 # ----------------------------------------------
-st.subheader("✨ What This App Does")
+st.markdown("<h2 class='section-title'> What This App Does</h2>", unsafe_allow_html=True)
 st.write(
     """
     CleanKitchen NYC helps users explore NYC restaurants through:
@@ -36,7 +77,7 @@ col1, col2, col3 = st.columns(3)
 with col1:
     st.markdown(
         """
-        <div style='background:#FAFAFA; padding:20px; border-radius:12px; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
+        <div class='card' style='background:#FAFAFA; padding:20px; border-radius:12px; border-top:4px solid {ACCENT}; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
             <h3>🗺️ Interactive Map</h3>
             <p>Search and explore all NYC restaurants using Google Places or official DOH records.</p>
         </div>
@@ -47,7 +88,7 @@ with col1:
 with col2:
     st.markdown(
         """
-        <div style='background:#FAFAFA; padding:20px; border-radius:12px; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
+        <div class='card' style='background:#FAFAFA; padding:20px; border-radius:12px; border-top:4px solid {ACCENT}; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
             <h3>🧠 ML Grade Predictions</h3>
             <p>Our trained model uses 17+ features to predict whether a restaurant is likely A, B, or C.</p>
         </div>
@@ -58,7 +99,7 @@ with col2:
 with col3:
     st.markdown(
         """
-        <div style='background:#FAFAFA; padding:20px; border-radius:12px; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
+        <div class='card' style='background:#FAFAFA; padding:20px; border-radius:12px; border-top:4px solid {ACCENT}; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
             <h3>📊 Filter & Insights</h3>
             <p>Analyze patterns across boroughs, cuisines, scores, and violations.</p>
         </div>
@@ -71,7 +112,16 @@ st.markdown("---")
 # ----------------------------------------------
 # HOW IT WORKS
 # ----------------------------------------------
-st.subheader("🔧 How the System Works")
+st.markdown("<h2 class='section-title'>🔧 How the System Works</h2>", unsafe_allow_html=True)
+with st.expander("📊 See a sample distribution chart"):
+    import altair as alt
+    chart = alt.Chart(df.head(50)).mark_bar().encode(
+        x="score:Q",
+        y="count()"
+    )
+    st.altair_chart(chart, use_container_width=True)
+
+
 
 st.markdown(
     """
