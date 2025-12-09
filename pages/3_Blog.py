@@ -343,21 +343,33 @@ def improvement_card(title, description):
             <p style='color:#555;'>{description}</p>
         </div>
         """,
-      "  unsafe_allow_html=True
+        unsafe_allow_html=True
     )
 
+# -------------------------------
+# Render each improvement CLEANLY
+# -------------------------------
+
 improvement_card(
-        "1. Smarter Google Predictions"
-        "We will improve how Google Places data is normalized for the model. This will reduce mismatches in cuisine, ZIP, and borough fields. The goal is more accurate predictions for restaurants not found in the NYC dataset."
-
-        "2. Real-Time Inspection Updates"
-        "The app will connect to NYC’s live DOHMH API. New violations and re-inspections will update instantly in the map and predictions. This keeps grade predictions fresh and reliable."
-
-        "3. Better Explainability & Risk Forecasting"
-        "We plan to add SHAP/LIME so users can see why a grade was predicted. A risk model will estimate the chance of critical violations or failed inspections. This helps users understand hidden patterns and future risks."
-    
+    "🚀 1. Smarter Google Predictions",
+    "We will improve how Google Places data is normalized. "
+    "This will reduce mismatches in cuisine, ZIP, and borough fields. "
+    "The goal is more accurate predictions for restaurants not found in the NYC dataset."
 )
 
+improvement_card(
+    "📡 2. Real-Time Inspection Updates",
+    "The app will connect to NYC’s live DOHMH API. "
+    "New violations and re-inspections will update instantly. "
+    "This keeps grade predictions fresh and reliable."
+)
+
+improvement_card(
+    "🧬 3. Better Explainability & Risk Forecasting",
+    "We plan to add SHAP/LIME so users can see why a grade was predicted. "
+    "A risk model will estimate the chance of critical violations. "
+    "This helps users understand hidden patterns and future risks."
+)
 
 
 st.markdown("---")
