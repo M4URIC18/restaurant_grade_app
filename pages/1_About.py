@@ -114,12 +114,23 @@ st.markdown("---")
 # ----------------------------------------------
 st.markdown("<h2 class='section-title'>🔧 How the System Works</h2>", unsafe_allow_html=True)
 with st.expander("📊 See a sample distribution chart"):
+    import pandas as pd
     import altair as alt
-    chart = alt.Chart(df.head(50)).mark_bar().encode(
-        x="score:Q",
-        y="count()"
-    )
-    st.altair_chart(chart, use_container_width=True)
+
+    try:
+        df = pd.read_csv("data/df_merged_big.csv")
+        chart = (
+            alt.Chart(df.head(200))
+            .mark_bar()
+            .encode(
+                x="score:Q",
+                y="count()"
+            )
+        )
+        st.altair_chart(chart, use_container_width=True)
+    except Exception:
+        st.info("Dataset not available or could not be loaded.")
+
 
 
 
