@@ -1,0 +1,36 @@
+[
+  {
+    "title": "Improved Model Pipeline & Feature Engineering",
+    "date": "2025-12-05",
+    "tags": ["Machine Learning", "Data"],
+    "image": "images/model_pipeline.png",
+    "content": [
+      "Added demographic features: median income, poverty rate, race percentages.",
+      "Built ZIP lookup system for Google restaurants.",
+      "Standardized feature schema using model_metadata.json.",
+      "Improved preprocessing and missing value handling."
+    ]
+  },
+  {
+    "title": "Google Places Integration (Nearby Restaurants Mode)",
+    "date": "2025-12-04",
+    "tags": ["UI", "Data"],
+    "image": "images/google_api.png",
+    "content": [
+      "Added Nearby Search + Place Details.",
+      "Normalized Google restaurant features for the ML model.",
+      "Implemented distance matching for clicking Google markers."
+    ]
+  },
+  {
+    "title": "Map Rendering & Session-State Fix",
+    "date": "2025-12-03",
+    "tags": ["Fixes", "UI"],
+    "image": null,
+    "content": [
+      "Eliminated rerender loops caused by state conflicts.",
+      "Preserved map zoom/center across clicks.",
+      "Fixed flickering and improved responsiveness."
+    ]
+  }
+]
