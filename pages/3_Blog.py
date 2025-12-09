@@ -343,40 +343,22 @@ def improvement_card(title, description):
             <p style='color:#555;'>{description}</p>
         </div>
         """,
-        unsafe_allow_html=True
+      "  unsafe_allow_html=True
     )
 
 improvement_card(
-    "📡 Real-Time NYC DOH API Integration",
-    "Use the live DOHMH inspection API so new violations and re-inspections "
-    "are reflected instantly. This would allow the model to adjust predictions "
-    "based on the most recent data — improving freshness and reliability."
+        "1. Smarter Google Predictions"
+        "We will improve how Google Places data is normalized for the model. This will reduce mismatches in cuisine, ZIP, and borough fields. The goal is more accurate predictions for restaurants not found in the NYC dataset."
+
+        "2. Real-Time Inspection Updates"
+        "The app will connect to NYC’s live DOHMH API. New violations and re-inspections will update instantly in the map and predictions. This keeps grade predictions fresh and reliable."
+
+        "3. Better Explainability & Risk Forecasting"
+        "We plan to add SHAP/LIME so users can see why a grade was predicted. A risk model will estimate the chance of critical violations or failed inspections. This helps users understand hidden patterns and future risks."
+    
 )
 
-improvement_card(
-    "🧬 SHAP / LIME Explainability",
-    "Add model explanations that show *why* a restaurant received a predicted grade. "
-    "SHAP values can highlight which features (score, ZIP demographics, violations, cuisine) "
-    "were most important for the prediction. This increases trust and transparency."
-)
 
-improvement_card(
-    "⚠️ Predicting Food Safety Risk Categories",
-    "Extend the model beyond A/B/C grades. Predict the likelihood of critical violations, "
-    "repeat offenders, or potential future closures. This turns the tool into a risk-monitoring dashboard."
-)
-
-improvement_card(
-    "🏙️ Neighborhood Health Profiles",
-    "Build profile pages for neighborhoods with maps, risk levels, demographic summaries, "
-    "common violations, and average scores. This helps users understand broader patterns in food safety."
-)
-
-improvement_card(
-    "🔮 Predict Future Inspection Outcomes",
-    "Train a temporal model to estimate whether a restaurant is likely to fail its next inspection. "
-    "This would help identify establishments that need urgent attention or improvement."
-)
 
 st.markdown("---")
 
