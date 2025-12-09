@@ -284,41 +284,40 @@ if "cuisine_description" in df_filtered.columns and "score" in df_filtered.colum
         worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
 
 
+        
+        st.markdown("#### 🥇 Top 10 Best Cuisines")
+        best_df = best_cuisines.reset_index()
+        best_df.columns = ["cuisine_description", "score"]
 
-        with c1:
-            st.markdown("#### 🥇 Top 10 Best Cuisines")
-            best_df = best_cuisines.reset_index()
-            best_df.columns = ["cuisine_description", "score"]
-
-            chart_best = (
-                alt.Chart(best_df)
-                .mark_bar()
-                .encode(
-                    x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
-                    y=alt.Y("score:Q", title="Average Score (lower is better)"),
-                    tooltip=["cuisine_description:N", "score:Q"],
-                    color=alt.Color("cuisine_description:N", legend=None),
-                )
-                .properties(height=300)
+        chart_best = (
+            alt.Chart(best_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+                y=alt.Y("score:Q", title="Average Score (lower is better)"),
+                tooltip=["cuisine_description:N", "score:Q"],
+                color=alt.Color("cuisine_description:N", legend=None),
             )
-            st.altair_chart(chart_best, width="stretch")
+            .properties(height=300)
+        )
+        st.altair_chart(chart_best, width="stretch")
 
-        with c2:
-            st.markdown("#### 🚨 Top 10 Worst Cuisines")
-            worst_df = worst_cuisines.reset_index()
-            worst_df.columns = ["cuisine_description", "score"]
+        
+        st.markdown("#### 🚨 Top 10 Worst Cuisines")
+        worst_df = worst_cuisines.reset_index()
+        worst_df.columns = ["cuisine_description", "score"]
 
-            chart_worst = (
-                alt.Chart(worst_df)
-                .mark_bar()
-                .encode(
-                    x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
-                    y=alt.Y("score:Q", title="Average Score (higher is worse)"),
-                    tooltip=["cuisine_description:N", "score:Q"],
-                    color=alt.Color("cuisine_description:N", legend=None),
-                )
-                .properties(height=300)
+        chart_worst = (
+            alt.Chart(worst_df)
+            .mark_bar()
+            .encode(
+                x=alt.X("cuisine_description:N", sort="-y", title="Cuisine"),
+                y=alt.Y("score:Q", title="Average Score (higher is worse)"),
+                tooltip=["cuisine_description:N", "score:Q"],
+                color=alt.Color("cuisine_description:N", legend=None),
             )
-            st.altair_chart(chart_worst, width="stretch")
+            .properties(height=300)
+        )
+        st.altair_chart(chart_worst, width="stretch")
 else:
     st.info("Not enough data to rank cuisines.")
