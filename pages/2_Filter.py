@@ -90,19 +90,23 @@ else:
 
 
 
-# Critical filter (supports text or numeric formats)
-if critical_col is not None and critical_choice != "All":
+# Critical flag (works with critical_flag or critical_flag_bin)
+critical_col = None
+if "critical_flag_bin" in df.columns:
+    critical_col = "critical_flag_bin"
+elif "critical_flag" in df.columns:
+    critical_col = "critical_flag"
 
-    # normalize the column to lowercase strings
-    col = df_filtered[critical_col].astype(str).str.lower().str.strip()
-
-    if critical_choice == "Critical only":
-        df_filtered = df_filtered[col.isin(["critical", "1"])]
-
-    elif critical_choice == "Non-critical only":
-        df_filtered = df_filtered[col.isin(["not critical", "0"])]
+critical_choice = "All"
+if critical_col is not None:
+    critical_choice = st.sidebar.radio(
+        "Critical Violations",
+        options=["All", "Critical only", "Non-critical only"],
+        key=CRIT_KEY,
+    )
 else:
     st.sidebar.info("No critical flag column found in data.")
+
 
 # -------------------------------------------------
 # Clear Filters Button
@@ -141,11 +145,11 @@ if score_range is not None and "score" in df_filtered.columns:
 
 # Critical filter
 if critical_col is not None and critical_choice != "All":
-    # many datasets use 1 = critical, 0 = not critical
     if critical_choice == "Critical only":
         df_filtered = df_filtered[df_filtered[critical_col] == 1]
     elif critical_choice == "Non-critical only":
         df_filtered = df_filtered[df_filtered[critical_col] == 0]
+
 
 # -------------------------------------------------
 # Summary
