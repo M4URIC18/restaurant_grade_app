@@ -1,5 +1,10 @@
 import streamlit as st
 
+# Initialize session state key BEFORE using it
+if "blog_post_selector" not in st.session_state:
+    st.session_state["blog_post_selector"] = "-- Select a post --"
+
+
 st.set_page_config(page_title="CleanKitchen Blog", layout="wide")
 
 st.title("📝 CleanKitchen NYC — Project Blog")
@@ -285,10 +290,12 @@ if selected and selected != "-- Select a post --":
         key="blog_post_selector",
     )
 
+
     # Close button — correctly resets a widget-controlled session_state key
     if st.button("Close Post"):
         st.session_state["blog_post_selector"] = "-- Select a post --"
         st.rerun()
+
 
 else:
     st.info("Select a blog post from the dropdown to view details.")
