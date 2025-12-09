@@ -1,87 +1,126 @@
-# pages/3_Blog.py
-
 import streamlit as st
-import json
-import os
-from datetime import datetime
+import pandas as pd
 
-st.set_page_config(page_title="Blog – CleanKitchen NYC", layout="wide")
+st.set_page_config(page_title="About", layout="centered")
 
-st.title("📝 CleanKitchen NYC Blog")
-st.subheader("Project Updates, Experiments, and Fixes")
+st.title("🍽️ CleanKitchen NYC")
+st.caption("A clean and simple tool for exploring New York City restaurant health data.")
 
-st.write("This blog tracks progress, insights, and improvements made while building CleanKitchen NYC.")
+st.markdown("---")
 
-st.divider()
+# ------------------------------
+# WHAT THIS APP DOES
+# ------------------------------
+st.header("What This App Does")
 
-# ============================================
-# Load blog posts from JSON
-# ============================================
-BLOG_PATH = os.path.join("data", "blog_posts.json")
+st.markdown("""
+CleanKitchen NYC helps users explore NYC restaurant inspection data and 
+predict health grades using a machine-learning model.  
+The app combines:
 
-if not os.path.exists(BLOG_PATH):
-    st.error("❌ blog_posts.json not found in /data folder.")
-    st.stop()
+- 🏙️ **NYC Restaurant Inspection Data**  
+- 🧮 **Demographic & socioeconomic features**  
+- 🧠 **ML-based grade prediction**  
+- 🗺️ **Interactive maps & filters**
 
-with open(BLOG_PATH, "r") as f:
-    posts = json.load(f)
+Everything is shown in a simple and clean layout.
+""")
 
-# ============================================
-# Collect all tags
-# ============================================
-all_tags = sorted({tag for post in posts for tag in post["tags"]})
+st.markdown("---")
 
-selected_tags = st.multiselect(
-    "Filter by tags",
-    options=all_tags,
-    default=[],
-    help="Use this filter to show only posts matching certain topics."
-)
+# ------------------------------
+# HOW IT WORKS
+# ------------------------------
+st.header("How It Works")
 
-def post_matches_tags(post):
-    if not selected_tags:
-        return True
-    return any(tag in post["tags"] for tag in selected_tags)
+with st.expander("Data Collection"):
+    st.write("""
+    We gather public data from NYC Open Data (restaurant inspections) and merge it
+    with ZIP-code demographic data. This provides a rich feature set for predictions.
+    """)
 
-# Sort posts (newest first)
-posts_sorted = sorted(posts, key=lambda x: x["date"], reverse=True)
+with st.expander("Model Training"):
+    st.write("""
+    A Random Forest classifier is trained to predict A/B/C grades using:
+    
+    - restaurant score  
+    - violation history  
+    - ZIP-level demographics  
+    - cuisine type  
+    """)
 
-# ============================================
-# Render blog posts
-# ============================================
-for post in posts_sorted:
-    if not post_matches_tags(post):
-        continue
+with st.expander("Prediction Process"):
+    st.write("""
+    When you click a restaurant on the map, the app prepares its features,
+    sends them to the model, and shows the predicted grade with confidence.
+    """)
 
-    with st.container():
-        st.markdown(f"### **{post['title']}**")
+st.markdown("---")
 
-        # Format date
-        dt = datetime.strptime(post["date"], "%Y-%m-%d")
-        st.caption(f"📅 {dt.strftime('%b %d, %Y')}")
+# ------------------------------
+# DATA SOURCES
+# ------------------------------
+st.header("Data Sources")
 
-        # Tags
-        tag_badges = " ".join(
-            [f"<span style='background:#eee;padding:4px 8px;border-radius:8px;margin-right:6px;font-size:13px;'>{tag}</span>"
-             for tag in post["tags"]]
-        )
-        st.markdown(tag_badges, unsafe_allow_html=True)
+st.write("""
+- **NYC DOHMH Restaurant Inspection Results**  
+  Public dataset containing restaurant inspection scores and grades.
 
-        st.write("")  # spacing
+- **NYC Demographic & Socioeconomic Data**  
+  ZIP-code level statistics merged to enrich prediction quality.
+""")
 
-        # Optional image
-        if post.get("image"):
-            img_path = post["image"]
-            if os.path.exists(img_path):
-                st.image(img_path, use_container_width=True)
-            else:
-                st.warning(f"Image not found: {img_path}")
+# Small interactivity: sample data preview
+if st.button("Show Sample Restaurant Data"):
+    try:
+        df = pd.read_csv("data/df_merged_big.csv")
+        st.dataframe(df.head())
+    except:
+        st.info("Sample data unavailable in this environment.")
 
-        # Content list
-        for bullet in post["content"]:
-            st.write(f"- {bullet}")
+st.markdown("---")
 
-        st.markdown("---")
+# ------------------------------
+# TECH STACK
+# ------------------------------
+st.header("Tech Stack")
 
-# Footer
-st.info("More posts coming soon!")
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("""
+    - **Python**
+    - **Pandas**
+    - **Scikit-Learn**
+    - **Streamlit**
+    - **Altair Charts**
+    """)
+
+with col2:
+    st.write("""
+    - **Folium Maps**
+    - **Google Places API**
+    - **Random Forest Model**
+    - **JSON / CSV Pipelines**
+    """)
+
+st.markdown("---")
+
+# ------------------------------
+# CREATOR
+# ------------------------------
+st.header("Creator")
+
+st.write("""
+This project was built by Mep Eus Prez as a final ML + Data Engineering project.
+
+If you'd like to connect or see more projects:
+""")
+
+colA, colB = st.columns(2)
+colA.link_button("GitHub", "https://github.com/")
+colB.link_button("LinkedIn", "https://linkedin.com/")
+
+st.markdown("---")
+
+st.markdown("### Thanks for visiting CleanKitchen NYC!")
