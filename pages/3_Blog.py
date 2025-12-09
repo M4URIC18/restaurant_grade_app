@@ -284,11 +284,6 @@ if selected and selected != "-- Select a post --":
 
     st.markdown("</div>", unsafe_allow_html=True)
 
-    selected = st.selectbox(
-        "Select a post to read:",
-        ["-- Select a post --"] + list(POSTS.keys()),
-        key="blog_post_selector",
-    )
 
 
     # Close button — correctly resets a widget-controlled session_state key
