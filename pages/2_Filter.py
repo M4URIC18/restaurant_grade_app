@@ -264,11 +264,13 @@ if "violation_code" in df_filtered.columns:
 else:
     st.info("No violation_code column in current data.")
 
+st.markdown("---")
 # -------------------------------------------------
 # Best & Worst Cuisines
 # -------------------------------------------------
-st.markdown("---")
+
 st.markdown("<h3 style='text-align:center;'>Best & Worst Cuisines (Average Score)</h3>", unsafe_allow_html=True)
+st.markdown("---")
 
 if "cuisine_description" in df_filtered.columns and "score" in df_filtered.columns:
     cuisine_scores = (
