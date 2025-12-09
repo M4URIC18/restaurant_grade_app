@@ -283,7 +283,7 @@ if "cuisine_description" in df_filtered.columns and "score" in df_filtered.colum
         best_cuisines = cuisine_scores.head(10)
         worst_cuisines = cuisine_scores.tail(10).sort_values(ascending=False)
 
-        c1, c2 = st.columns(2)
+
 
         with c1:
             st.markdown("#### 🥇 Top 10 Best Cuisines")
