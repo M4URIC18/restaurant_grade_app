@@ -157,7 +157,7 @@ st.markdown("<h3 style='text-align:center;'>Current Filter Summary</h3>", unsafe
 total = len(df)
 current = len(df_filtered)
 
-st.write(f"Showing **{current}** restaurants out of **{total}** total.")
+st.write(f"<p style='text-align:center;'>Showing **{current}** restaurants out of **{total}** total.</p>")
 
 if current == 0:
     st.warning("No data matches your filters. Try relaxing the filters.")
