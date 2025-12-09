@@ -74,11 +74,19 @@ st.write(
 
 col1, col2, col3 = st.columns(3)
 
+ACCENT = "#4C9AFF"  # or whatever accent color you want
+
 with col1:
     st.markdown(
-        """
-        <div class='card' style='background:#FAFAFA; padding:20px; border-radius:12px; border-top:4px solid {ACCENT}; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
-            <h3>🗺️ Interactive Map</h3>
+        f"""
+        <div class='card' 
+             style='background:#FAFAFA; 
+                    padding:20px; 
+                    border-radius:12px; 
+                    border-top:4px solid {ACCENT}; 
+                    box-shadow:0 0 8px rgba(0,0,0,0.08);
+                    color:#333;'>
+            <h3 style='color:#222;'>🗺️ Interactive Map</h3>
             <p>Search and explore all NYC restaurants using Google Places or official DOH records.</p>
         </div>
         """,
@@ -87,10 +95,16 @@ with col1:
 
 with col2:
     st.markdown(
-        """
-        <div class='card' style='background:#FAFAFA; padding:20px; border-radius:12px; border-top:4px solid {ACCENT}; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
-            <h3>🧠 ML Grade Predictions</h3>
-            <p>Our trained model uses 17+ features to predict whether a restaurant is likely A, B, or C.</p>
+        f"""
+        <div class='card' 
+             style='background:#FAFAFA; 
+                    padding:20px; 
+                    border-radius:12px; 
+                    border-top:4px solid {ACCENT}; 
+                    box-shadow:0 0 8px rgba(0,0,0,0.08);
+                    color:#333;'>
+            <h3 style='color:#222;'>🧠 ML Grade Predictions</h3>
+            <p>Our trained model uses 17+ features to predict A, B, or C grades.</p>
         </div>
         """,
         unsafe_allow_html=True
@@ -98,14 +112,21 @@ with col2:
 
 with col3:
     st.markdown(
-        """
-        <div class='card' style='background:#FAFAFA; padding:20px; border-radius:12px; border-top:4px solid {ACCENT}; box-shadow:0 0 8px rgba(0,0,0,0.08);'>
-            <h3>📊 Filter & Insights</h3>
+        f"""
+        <div class='card' 
+             style='background:#FAFAFA; 
+                    padding:20px; 
+                    border-radius:12px; 
+                    border-top:4px solid {ACCENT}; 
+                    box-shadow:0 0 8px rgba(0,0,0,0.08);
+                    color:#333;'>
+            <h3 style='color:#222;'>📊 Filter & Insights</h3>
             <p>Analyze patterns across boroughs, cuisines, scores, and violations.</p>
         </div>
         """,
         unsafe_allow_html=True
     )
+
 
 st.markdown("---")
 
