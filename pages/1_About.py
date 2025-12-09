@@ -1,3 +1,7 @@
+# pages/1_About.py
+import streamlit as st
+import pandas as pd
+
 st.markdown(
     """
     <style>
@@ -22,9 +26,6 @@ st.markdown(
 )
 
 
-# pages/1_About.py
-import streamlit as st
-import pandas as pd
 
 st.set_page_config(page_title="About CleanKitchen NYC", layout="wide")
 
