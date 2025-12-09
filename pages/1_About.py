@@ -196,8 +196,8 @@ with st.expander("Data Collection"):
     We gather public data from NYC Open Data (restaurant inspections) and merge it
     with ZIP-code demographic data. This provides a rich feature set for predictions:
     
-    - NYC DOH inspection history (292,000+ records)<br>
-    - ZIP-code demographic stats (income, poverty rate, ethnicity mix)<br>
+    - NYC DOH inspection history (292,000+ records)
+    - ZIP-code demographic stats (income, poverty rate, ethnicity mix)
     - Google Places API for real-time restaurant lookup
     """)
 
@@ -218,37 +218,6 @@ with st.expander("Prediction Process"):
     """)
 
 st.markdown("---")
-
-st.markdown(
-    """
-    <div class='timeline-item'>
-        <h3>📦 Data Sources</h3>
-        <p class='subtext'>
-            • NYC DOH inspection history (292,000+ records)<br>
-            • ZIP-code demographic stats (income, poverty rate, ethnicity mix)<br>
-            • Google Places API for real-time restaurant lookup
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown(
-    """
-    <div class='timeline-item'>
-        <h3>🧠 Machine Learning Model</h3>
-        <p class='subtext'>
-            Our Random Forest model uses over 17 features including:<br>
-            – Inspection score<br>
-            – ZIP demographics<br>
-            – Borough and cuisine<br>
-            – Violation history<br>
-            to predict A/B/C grades instantly.
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
 
 st.markdown(
     """
