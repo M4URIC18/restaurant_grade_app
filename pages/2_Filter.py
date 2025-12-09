@@ -21,6 +21,8 @@ then explore grade patterns, violations, and cuisine rankings.
 """
 )
 
+st.markdown("---")
+
 # -------------------------------------------------
 # Sidebar Filters (with explicit keys)
 # -------------------------------------------------
