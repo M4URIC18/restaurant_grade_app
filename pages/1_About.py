@@ -235,6 +235,25 @@ st.markdown("</div>", unsafe_allow_html=True)
 
 st.markdown("---")
 
+# ------------------------------
+# DATA SOURCES
+# ------------------------------
+
+st.header("Data Sources")
+
+st.markdown("""
+- **[NYC DOHMH Restaurant Inspection Results](https://data.cityofnewyork.us/Health/Restaurant-Inspection-Results/43nn-pn8j)**  
+  Public dataset containing restaurant inspection scores and grades.
+
+- **[NYC ZIP Code Demographic Profile](https://data.cityofnewyork.us/City-Government/Demographic-Statistics-By-Zip-Code/kku6-nxdu)**  
+  ZIP-code level statistics merged to enrich prediction quality.
+""")
+
+
+
+
+st.markdown("---")
+
 # -------------------------------------------------
 # ROADMAP — Clean Layout
 # -------------------------------------------------
