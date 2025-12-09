@@ -191,6 +191,34 @@ st.markdown("<h2 class='section-title'>🔧 How the System Works</h2>", unsafe_a
 
 st.markdown("<div class='timeline'>", unsafe_allow_html=True)
 
+with st.expander("Data Collection"):
+    st.write("""
+    We gather public data from NYC Open Data (restaurant inspections) and merge it
+    with ZIP-code demographic data. This provides a rich feature set for predictions:
+    
+    - NYC DOH inspection history (292,000+ records)<br>
+    - ZIP-code demographic stats (income, poverty rate, ethnicity mix)<br>
+    - Google Places API for real-time restaurant lookup
+    """)
+
+with st.expander("Model Training"):
+    st.write("""
+    A Random Forest classifier is trained to predict A/B/C grades using:
+    
+    - restaurant score  
+    - violation history  
+    - ZIP-level demographics  
+    - cuisine type  
+    """)
+
+with st.expander("Prediction Process"):
+    st.write("""
+    When you click a restaurant on the map, the app prepares its features,
+    sends them to the model, and shows the predicted grade with confidence.
+    """)
+
+st.markdown("---")
+
 st.markdown(
     """
     <div class='timeline-item'>
