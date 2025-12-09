@@ -5,7 +5,7 @@ import streamlit as st
 
 st.set_page_config(page_title="CleanKitchen Blog", layout="wide")
 
-st.title("📝 CleanKitchen NYC — Project Blog")
+st.title("📝 CleanKitchen NYC — Blog")
 st.caption("Learn how the dataset was built, how the model works, and how predictions are made.")
 
 st.markdown("---")
@@ -329,7 +329,7 @@ import streamlit as st
 def improvement_card(title, description):
     st.markdown(
         f"""
-        <div style='background:#FAFAFA; padding:20px; border-radius:12px;
+        <div style='background:#3d9df333; padding:20px; border-radius:12px;
                     box-shadow:0 0 5px rgba(0,0,0,0.08); margin-bottom:15px;'>
             <h4>{title}</h4>
             <p style='color:#555;'>{description}</p>
