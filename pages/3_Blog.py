@@ -1,8 +1,6 @@
 import streamlit as st
 
-# Initialize session state key BEFORE using it
-if "blog_post_selector" not in st.session_state:
-    st.session_state["blog_post_selector"] = "-- Select a post --"
+
 
 
 st.set_page_config(page_title="CleanKitchen Blog", layout="wide")
@@ -256,14 +254,29 @@ They improved accuracy even if imperfect.
 # UI — Dropdown + Display Logic
 # ----------------------------------------------------------
 
+# 1) Initialize session_state keys
 if "selected_post" not in st.session_state:
-    st.session_state.selected_post = None
+    st.session_state.selected_post = "-- Select a post --"
 
+if "close_post_flag" not in st.session_state:
+    st.session_state.close_post_flag = False
+
+# 2) If we requested a reset on a previous run, do it NOW (before widget)
+if st.session_state.close_post_flag:
+    st.session_state.selected_post = "-- Select a post --"
+    st.session_state.close_post_flag = False
+
+# 3) Render the dropdown
 selected = st.selectbox(
     "Select a post to read:",
     ["-- Select a post --"] + list(POSTS.keys()),
-    key="selected_post"
+    key="selected_post",
 )
+
+st.markdown("---")
+
+
+
 
 st.markdown("---")
 
@@ -287,8 +300,9 @@ if selected and selected != "-- Select a post --":
 
 
     # Close button — correctly resets a widget-controlled session_state key
+    # 4) Close button — set a flag and rerun (do NOT touch selected_post here)
     if st.button("Close Post"):
-        st.session_state["blog_post_selector"] = "-- Select a post --"
+        st.session_state.close_post_flag = True
         st.rerun()
 
 
