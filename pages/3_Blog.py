@@ -3,397 +3,284 @@ import streamlit as st
 st.set_page_config(page_title="CleanKitchen Blog", layout="wide")
 
 st.title("📝 CleanKitchen NYC — Project Blog")
-st.caption("Explore how the app was built, the datasets used, and the ML choices made.")
+st.caption("Learn how the dataset was built, how the model works, and how predictions are made.")
 
 st.markdown("---")
 
 # ----------------------------------------------------------
-# BLOG POSTS CONTENT
+# BLOG POSTS (clean paragraphs + bullet points)
 # ----------------------------------------------------------
 
 POSTS = {
     "Post 1 — Dataset Overview & Why Multiple Sources Were Needed": """
-### 📌 Post 1 — Dataset Overview & Why Multiple Sources Were Needed
+### **Dataset Overview & Why Multiple Sources Were Needed**
 
-CleanKitchen NYC uses **three major datasets**, each contributing a different layer of information:
+CleanKitchen NYC combines several datasets to create a strong prediction system.
+Each dataset provides a different layer of insight.
 
----
+#### **1. NYC Restaurant Inspection Dataset**
+This is the main dataset, containing:
+- Inspection scores
+- Violation codes
+- Violation descriptions
+- Letter grades (A/B/C)
+- Restaurant location (borough, ZIP code, coordinates)
 
-## **1. NYC Restaurant Inspection Dataset (Primary)**
-- 292,000+ inspection records  
-- Includes score, grade, violation codes, violation descriptions  
-- Contains location: borough, street, ZIP code, latitude, longitude  
-- This is the foundation of the prediction model  
+This dataset forms the **core features** for the ML model.
 
-Why it's important:  
-The inspection score is the **strongest predictor** of the final grade.
-
----
-
-## **2. Neighborhood Financial Health (NFH) Dataset**
-This dataset adds:
+#### **2. Neighborhood Financial Health Dataset (NFH)**
+Adds neighborhood-level socioeconomic data:
 - Poverty rate  
 - Median income  
-- Ethnic composition  
-- Neighborhood-level socioeconomics  
+- Ethnicity mix  
+- Financial health index  
 
-**Problem:**  
-It *does not contain ZIP codes*, only neighborhood names → which forced a mapping step.
+It does not include ZIP codes, which introduces challenges during merging.
 
----
+#### **3. ZIP Code Population Dataset**
+Adds ZIP-level population and density.
 
-## **3. ZIP Code Population Dataset**
-We added this to enrich:
-- Population density  
-- Number of residents per ZIP  
-- How crowded/commercial a ZIP code is  
+Population helps model:
+- How busy an area is
+- Patterns in inspection frequency
 
-Population helps find patterns:
-- Manhattan ZIPs have dense commercial areas → more inspections, more violations  
-- Staten Island ZIPs have lower density → often cleaner profiles  
-
----
-
-## Summary
-
-By combining:
-- Inspection scores  
-- Demographics  
-- Population density  
-
-…the model becomes **much more stable**, especially in cases where inspection counts are low.  
+#### **Why All 3 Are Needed**
+Combining all datasets gives:
+- Cleaner signals  
+- Less noise  
+- More stable predictions  
 """,
 
     "Post 2 — Data Cleaning Pipeline (Step-by-Step)": """
-### 📌 Post 2 — Data Cleaning Pipeline (Step-by-Step)
+### **Data Cleaning Pipeline (Step-by-Step)**
 
-To prepare the model dataset, we used the following cleaning steps:
+Data cleaning ensured the dataset was consistent and ready for ML.
 
----
+#### **1. Removing Duplicates**
+- Duplicate inspection rows were removed based on `camis`, `violation_code`, and `inspection_date`.
 
-## **1. Remove duplicates**
-Inspection datasets often repeat rows.
-We removed duplicates based on:
-- `camis` (restaurant ID)
-- `inspection_date`
-- `violation_code`
-
----
-
-## **2. Convert dates**
-Converted:
+#### **2. Converting Dates**
+Converted to datetime:
 - `inspection_date`
 - `grade_date`
 - `record_date`
 
-into proper `datetime` objects.
+#### **3. Handling Missing Values**
+- Missing ZIP → drop  
+- Missing latitude/longitude → drop  
+- Missing demographics → `demo_missing = 1`  
+- Missing population → `pop_missing = 1`  
 
----
+The missing flags help the model understand incomplete data.
 
-## **3. Handle Missing Values**
-- Missing ZIP → remove (cannot predict location)  
-- Missing latitude/longitude → remove  
-- Missing demographic features → set indicator `demo_missing = 1`  
-- Missing population → set `pop_missing = 1`  
-
-Indicator features actually **help** the model understand when data is incomplete.
-
----
-
-## **4. Convert categorical values**
-Converted:
-- `boro`
-- `cuisine_description`
-- `violation_code`
-
-into model-ready categorical features.
-
----
-
-## Result
-A clean dataset of **24,050 rows** ready for ML training.
+#### **4. Converting Categorical Values**
+Cleaned and standardized:
+- borough  
+- cuisine type  
+- violation codes  
 """,
 
     "Post 3 — The Merge Problem: ZIP Codes vs Neighborhoods": """
-### 📌 Post 3 — The Merge Problem: ZIP Codes vs Neighborhoods
+### **The Merge Problem: ZIP Codes vs Neighborhoods**
 
-This was the trickiest part of the entire pipeline.
+A major challenge was merging the demographic dataset.
 
----
+#### ❌ **Problem**
+The demographic dataset uses:
+- Neighborhood names  
+- Borough names  
 
-## ❌ Problem: Demographic dataset had *no ZIP code column*
-It only had:
-- Borough  
-- Neighborhood name  
+But the inspection dataset uses:
+- ZIP codes
 
-But our restaurant dataset uses **ZIP codes**, not neighborhood names.
+This mismatch prevents a direct merge.
 
-This means:
-> We needed a bridge between ZIP codes and neighborhoods.
+#### 🔧 **Solution**
+We used a helper dataset that maps:
+- ZIP codes → neighborhood names  
 
----
+With this:
+- Restaurants inherit demographic values from their neighborhood  
 
-## 🔧 Solution: Neighborhood mapping
-We used an additional dataset that maps:
-**ZIP → Neighborhood**
+#### ⚠️ **Does This Reduce Accuracy?**
+A little — but the benefits outweigh the mapping inaccuracy.
 
-Then we could:
-- Map each ZIP to a neighborhood
-- Bring demographic data into the restaurant dataset
-
----
-
-## ⚠️ Accuracy Impact
-Neighborhood boundaries do **not** perfectly match ZIP boundaries.
-
-But:
-- Neighborhoods reflect socioeconomic conditions better  
-- Demographic data still provides useful signals  
-- The model learns overall patterns, not exact values  
-
-This improved accuracy, even though:
-- Some rows were dropped  
-- Some ZIP → neighborhood matches were approximate  
-
----
-
-## ✔️ Why it STILL improves predictions
-Demographics add:
-- Poverty rate  
-- Income  
-- Racial composition  
-- Indexscore (financial health)
-
-Even if ZIP/neighborhood alignment isn’t perfect:
-➡️ Restaurants in wealthier areas tend to have fewer critical violations  
-➡️ Higher-poverty ZIPs show higher average scores  
-
-The model benefits from these patterns.
+#### ✔️ **Why It Still Helps**
+- ZIP codes and neighborhoods share similar economic patterns  
+- Demographic trends help the model generalize  
+- Socioeconomic features stabilize predictions under low data  
 """,
 
     "Post 4 — Feature Engineering (17+ Inputs to the Model)": """
-### 📌 Post 4 — Feature Engineering (17+ Inputs to the Model)
+### **Feature Engineering (17+ Inputs to the Model)**
 
-Feature engineering is what makes the model reliable.
+We created a rich feature vector for each restaurant.
 
----
+#### **Numeric Features**
+- inspection score  
+- poverty rate  
+- median income  
+- percent race distribution  
+- population  
+- financial indexscore  
 
-## **1. Numeric Features**
-- `score`  
-- `nyc_poverty_rate`  
-- `median_income`  
-- `perc_white`, `perc_black`, etc.  
-- `population`  
-- `indexscore`  
+#### **Categorical Features**
+- borough  
+- ZIP code  
+- cuisine description  
+- violation code  
 
-These capture:
-- Cleanliness indicators  
-- Socioeconomic environment  
-
----
-
-## **2. Categorical Features**
-- `boro`  
-- `zipcode`  
-- `cuisine_description`  
-- `violation_code`  
-
-Converted with one-hot encoding (handled automatically by Random Forests).
-
----
-
-## **3. Indicator Flags**
+#### **Missing-Value Indicators**
 - `pop_missing`  
 - `demo_missing`  
 
-These tell the model:
-> “This ZIP or neighborhood had incomplete data.”
+These help the model avoid guessing during missing information.
 
-Models perform better when they *know* something is missing.
-
----
-
-## **Result**
-We created a **17-feature vector** that provides a complete picture of a restaurant’s environment.
+#### **Result**
+The model receives a complete 17+ feature set describing both:
+- the restaurant  
+- its neighborhood  
 """,
 
     "Post 5 — Population Density Dataset: Why It Matters": """
-### 📌 Post 5 — Population Density Dataset: Why It Matters
+### **Population Density Dataset: Why It Matters**
 
-Population helps explain patterns in restaurant cleanliness.
+Adding population greatly improved dataset quality.
 
----
+#### **1. High-Density ZIPs**
+Such as Manhattan ZIPs:
+- More customers  
+- More inspections  
+- More chances for violations  
 
-## **1. Crowded ZIPs have more inspections**
-Dense ZIP codes (like Manhattan):
-- More daily customers  
-- More violations  
-- More frequent inspections  
+#### **2. Low-Density ZIPs**
+Such as Staten Island ZIPs:
+- Fewer inspections  
+- Cleaner records in many cases  
 
-Low-density ZIPs (like Staten Island) often show:
-- Fewer violations  
-- More A grades  
+#### **3. `pop_missing` Indicator**
+Missing population data taught the model:
+> “Don’t depend heavily on demographics for this ZIP.”
 
----
-
-## **2. Adding Population Improved Model Stability**
-Even if population doesn’t directly predict a grade:
-➡️ It stabilizes the model  
-➡️ It helps distinguish restaurants in different types of neighborhoods  
-
----
-
-## **3. `pop_missing` is also valuable**
-If population was missing for a ZIP:
-- This often indicates rare or special-case ZIPs  
-- The model learns not to overtrust demographic features  
-
----
-
-## Result
-Population density became an important “context feature.”
+#### **Overall Benefit**
+Population adds context to inspection patterns and improves prediction stability.
 """,
 
     "Post 6 — Model Training & Validation": """
-### 📌 Post 6 — Model Training & Validation
+### **Model Training & Validation**
 
----
+#### **Why Random Forest?**
+Random Forest works well because:
+- It handles categorical + numeric values
+- It handles missing flags
+- It reduces overfitting
+- It gives feature importance
 
-## **Why Random Forest?**
-Because it:
-- Handles categorical + numeric features  
-- Handles missing flags automatically  
-- Reduces overfitting  
-- Gives feature importance  
+#### **Most Important Features**
+1. inspection score  
+2. ZIP code  
+3. critical_flag  
+4. cuisine_description  
+5. poverty rate  
 
-Perfect for mixed NYC data.
+This matches real inspection patterns.
 
----
-
-## **Feature Importances**
-The most important were:
-1. **score**  
-2. **zipcode**  
-3. **critical_flag**  
-4. **cuisine_description**  
-5. **poverty_rate**  
-
-Which confirms:
-➡️ Cleanliness score is the strongest predictor  
-➡️ Demographics add meaningful signal  
-
----
-
-## **Validation**
+#### **Validation Approach**
 - Train-test split  
-- Multiple experiments  
-- Stable accuracy across subsets  
+- Checked model stability  
+- Evaluated prediction confidence  
 
-Model performs reliably.
+The final model is reliable and robust.
 """,
 
     "Post 7 — Prediction Pipeline End-to-End": """
-### 📌 Post 7 — Prediction Pipeline End-to-End
+### **Prediction Pipeline End-to-End**
 
----
+Here's what happens when a user clicks a restaurant:
 
-## **1. User clicks a restaurant**
-Either:
-- From the dataset  
-- From Google Places  
+#### **1. Restaurant Selected**
+Either from:
+- DOHMH dataset  
+- Google Places  
 
----
+#### **2. Reverse Geocoding**
+Extracts borough, ZIP code, and address for Google results.
 
-## **2. Reverse Geocode (if Google mode)**
-We extract:
-- Address  
-- Borough  
-- ZIP code  
+#### **3. Data Normalization**
+Google data is converted to match our model's expected format.
 
----
-
-## **3. Normalize Google data**
-We convert Google’s format into our model’s format:
-- Cuisine  
-- ZIP  
-- Borough  
-- Score placeholder  
-- Violation placeholder  
-
----
-
-## **4. Build feature vector**
-We fill:
+#### **4. Feature Vector Construction**
+The system attaches:
 - demographics  
 - population  
 - missing flags  
-- categorical encodings  
 
----
-
-## **5. Make prediction**
+#### **5. Final Prediction**
 Model outputs:
-- Grade (A/B/C)  
-- Probabilities for each grade  
+- grade prediction (A/B/C)  
+- probabilities for each grade  
 
----
-
-## Result
-The pipeline is fast, accurate, and works seamlessly with both dataset and live Google results.
+Fast and seamless.
 """,
 
     "Post 8 — Lessons Learned": """
-### 📌 Post 8 — Lessons Learned
+### **Lessons Learned**
 
----
+#### **1. Merging Datasets Is Hard**
+ZIPs and neighborhoods rarely align perfectly.
+But the merge was still worthwhile.
 
-## **1. Merging datasets is messy**
-ZIPs and neighborhoods don’t align perfectly.
-But demographics still improved accuracy.
+#### **2. More Data ≠ Better Data**
+Losing rows during merging improved:
+- consistency  
+- stability  
+- clarity  
 
----
+#### **3. Demographic + Population Features Help**
+They improved accuracy even if imperfect.
 
-## **2. More data ≠ better data**
-We lost many rows during merging  
-…but the resulting dataset was:
-- cleaner  
-- more consistent  
-- more interpretable  
-
----
-
-## **3. Adding demographic and population data helps**
-Even if approximate, the model becomes:
-- more stable  
-- less overfitted  
-- better at edge cases  
-
----
-
-## **4. Future Improvements**
-- Add DOH real-time updates  
-- More cuisine-level analysis  
-- Deep learning models  
-- Predict violation types, not just grade  
+#### **4. Next Steps**
+- Real-time DOH updates  
+- Neighborhood prediction pages  
+- Cuisine-level health profiles  
+- Expanded ML model  
 """
 }
 
 # ----------------------------------------------------------
-# Dropdown UI
+# UI — Dropdown + Display Logic
 # ----------------------------------------------------------
 
-selected_post = st.selectbox(
-    "Select a blog post to read:",
+if "selected_post" not in st.session_state:
+    st.session_state.selected_post = None
+
+selected = st.selectbox(
+    "Select a post to read:",
     ["-- Select a post --"] + list(POSTS.keys()),
+    key="selected_post"
 )
 
 st.markdown("---")
 
-if selected_post != "-- Select a post --":
-    st.markdown(POSTS[selected_post], unsafe_allow_html=True)
+# ----------------------------------------------------------
+# Render post in a card
+# ----------------------------------------------------------
+
+if selected and selected != "-- Select a post --":
+    st.markdown(
+        """
+        <div style='background:white; padding:30px; border-radius:12px;
+        box-shadow:0 0 12px rgba(0,0,0,0.12); margin-bottom:20px;'>
+        """,
+        unsafe_allow_html=True
+    )
+
+    st.markdown(POSTS[selected], unsafe_allow_html=True)
+
+    st.markdown("</div>", unsafe_allow_html=True)
 
     if st.button("Close Post"):
-        st.experimental_set_query_params()  # resets selection
+        st.session_state.selected_post = None
         st.rerun()
 else:
-    st.info("Select a post from the dropdown to begin.")
+    st.info("Select a blog post from the dropdown to view details.")
