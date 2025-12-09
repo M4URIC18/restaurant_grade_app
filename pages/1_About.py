@@ -219,21 +219,6 @@ with st.expander("Prediction Process"):
 
 st.markdown("---")
 
-st.markdown(
-    """
-    <div class='timeline-item'>
-        <h3>🖥️ Tech Stack</h3>
-        <p class='subtext'>
-            Python • Streamlit • Pandas • Scikit-Learn • Folium • Altair • Google Places API
-        </p>
-    </div>
-    """,
-    unsafe_allow_html=True
-)
-
-st.markdown("</div>", unsafe_allow_html=True)
-
-st.markdown("---")
 
 # ------------------------------
 # DATA SOURCES
@@ -245,14 +230,20 @@ st.markdown("""
 - **[NYC DOHMH Restaurant Inspection Results](https://data.cityofnewyork.us/Health/Restaurant-Inspection-Results/43nn-pn8j)**  
   Public dataset containing restaurant inspection scores and grades.
 
-- **[NYC ZIP Code Demographic Profile](https://data.cityofnewyork.us/City-Government/Demographic-Statistics-By-Zip-Code/kku6-nxdu)**  
+- **[NYC ZIP Code Demographic Profile](https://data.cityofnewyork.us/Business/Neighborhood-Financial-Health-Digital-Mapping-and-/r3dx-pew9/about_data)**  
   ZIP-code level statistics merged to enrich prediction quality.
 """)
 
-
-
+# Small interactivity: sample data preview
+if st.button("Show Sample Restaurant Data"):
+    try:
+        df = pd.read_csv("data/df_merged_big.csv")
+        st.dataframe(df.head())
+    except:
+        st.info("Sample data unavailable in this environment.")
 
 st.markdown("---")
+
 
 # -------------------------------------------------
 # ROADMAP — Clean Layout
