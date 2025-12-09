@@ -139,7 +139,7 @@ with col1:
              box-shadow:0 0 8px rgba(0,0,0,0.08); border-left:4px solid #4F8BF9;'>
             <h3 style='color:#222;'>🗺️ Interactive Map</h3>
             <p class='subtext' style='color:#444;'>
-                Search and explore all NYC restaurants using Google Places or DOH records.
+                Explore all NYC restaurants using Google Places or DOH records.
             </p>
         </div>
         """,
