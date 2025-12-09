@@ -273,12 +273,6 @@ selected = st.selectbox(
     key="selected_post",
 )
 
-st.markdown("---")
-
-
-
-
-st.markdown("---")
 
 # ----------------------------------------------------------
 # Render post in a card
