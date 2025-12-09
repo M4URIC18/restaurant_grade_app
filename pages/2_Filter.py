@@ -82,7 +82,7 @@ select_critical = st.sidebar.multiselect(
 
 # ---- Reset button ----
 if st.sidebar.button("🔄 Reset Filters"):
-    st.experimental_rerun()
+    st.rerun()
 
 # ==========================================================
 # APPLY FILTERS
