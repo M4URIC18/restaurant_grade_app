@@ -89,7 +89,6 @@ else:
     st.sidebar.info("No score column found in data.")
 
 
-st.write("Columns:", df.columns.tolist())
 
 # Critical filter (supports text or numeric formats)
 if critical_col is not None and critical_choice != "All":
