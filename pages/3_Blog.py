@@ -281,7 +281,7 @@ selected = st.selectbox(
 if selected and selected != "-- Select a post --":
     st.markdown(
         """
-        <div style='background:white; padding:30px; border-radius:12px;
+        <div style='background:white; padding:15px; border-radius:12px;
         box-shadow:0 0 12px rgba(0,0,0,0.12); margin-bottom:20px;'>
         """,
         unsafe_allow_html=True
@@ -302,3 +302,72 @@ if selected and selected != "-- Select a post --":
 
 else:
     st.info("Select a blog post from the dropdown to view details.")
+
+
+
+
+
+
+
+
+
+
+
+st.markdown("---")
+st.markdown("## 🔮 Future Improvements")
+
+st.write("""
+The current version of *CleanKitchen NYC* predicts restaurant health grades using
+inspection scores, violation codes, demographics, and population patterns.
+Below are improvements planned for future versions to enhance prediction accuracy,
+explainability, and user experience.
+""")
+
+# ========== Improvement Cards ==========
+import streamlit as st
+
+def improvement_card(title, description):
+    st.markdown(
+        f"""
+        <div style='background:#FAFAFA; padding:20px; border-radius:12px;
+                    box-shadow:0 0 5px rgba(0,0,0,0.08); margin-bottom:15px;'>
+            <h4>{title}</h4>
+            <p style='color:#555;'>{description}</p>
+        </div>
+        """,
+        unsafe_allow_html=True
+    )
+
+improvement_card(
+    "📡 Real-Time NYC DOH API Integration",
+    "Use the live DOHMH inspection API so new violations and re-inspections "
+    "are reflected instantly. This would allow the model to adjust predictions "
+    "based on the most recent data — improving freshness and reliability."
+)
+
+improvement_card(
+    "🧬 SHAP / LIME Explainability",
+    "Add model explanations that show *why* a restaurant received a predicted grade. "
+    "SHAP values can highlight which features (score, ZIP demographics, violations, cuisine) "
+    "were most important for the prediction. This increases trust and transparency."
+)
+
+improvement_card(
+    "⚠️ Predicting Food Safety Risk Categories",
+    "Extend the model beyond A/B/C grades. Predict the likelihood of critical violations, "
+    "repeat offenders, or potential future closures. This turns the tool into a risk-monitoring dashboard."
+)
+
+improvement_card(
+    "🏙️ Neighborhood Health Profiles",
+    "Build profile pages for neighborhoods with maps, risk levels, demographic summaries, "
+    "common violations, and average scores. This helps users understand broader patterns in food safety."
+)
+
+improvement_card(
+    "🔮 Predict Future Inspection Outcomes",
+    "Train a temporal model to estimate whether a restaurant is likely to fail its next inspection. "
+    "This would help identify establishments that need urgent attention or improvement."
+)
+
+st.markdown("---")
