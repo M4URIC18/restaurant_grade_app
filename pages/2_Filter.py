@@ -151,7 +151,14 @@ if critical_col is not None and critical_choice != "All":
 # -------------------------------------------------
 # Summary
 # -------------------------------------------------
-st.markdown("### Current Filter Summary")
+st.markdown(
+    """
+    <h3 style='text-align:center; border-bottom:1px solid #eee; padding-bottom:5px;'>
+        Current Filter Summary
+    </h3>
+    """,
+    unsafe_allow_html=True
+)
 
 total = len(df)
 current = len(df_filtered)
