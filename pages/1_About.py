@@ -245,10 +245,60 @@ if st.button("Show Sample Restaurant Data"):
 st.markdown("---")
 
 
+# ------------------------------
+# TECH STACK
+# ------------------------------
+st.header("Tech Stack")
+
+col1, col2 = st.columns(2)
+
+with col1:
+    st.write("""
+    - **Python**
+    - **Pandas**
+    - **Scikit-Learn**
+    - **Streamlit**
+    - **Altair Charts**
+    """)
+
+with col2:
+    st.write("""
+    - **Folium Maps**
+    - **Google Places API**
+    - **Random Forest Model**
+    - **JSON / CSV Pipelines**
+    """)
+
+st.markdown("---")
+
+
+# ------------------------------
+# CREATOR
+# ------------------------------
+st.header("Creators")
+
+st.write("""
+This project was built by Jack, Dominik, and Mauricio as a final ML + Data science project.
+
+If you'd like to connect or see more projects:
+""")
+
+colA, colB = st.columns(2)
+colA.link_button("GitHub", "https://github.com/")
+colB.link_button("LinkedIn", "https://linkedin.com/")
+
+st.markdown("---")
+
+st.markdown("### Thanks for visiting CleanKitchen NYC!")
+
+
+
+
 # -------------------------------------------------
 # ROADMAP — Clean Layout
 # -------------------------------------------------
 st.markdown("<h2 class='section-title'>🚀 Roadmap</h2>", unsafe_allow_html=True)
+
 
 st.markdown(
     f"""
