@@ -143,6 +143,7 @@ if score_range is not None and "score" in df_filtered.columns:
         (df_filtered["score"] >= low) & (df_filtered["score"] <= high)
     ]
 
+st.write("Unique critical_flag values:", df["critical_flag"].unique().tolist())
 # Critical filter
 if critical_col is not None and critical_choice != "All":
     if critical_choice == "Critical only":
