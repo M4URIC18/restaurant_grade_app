@@ -88,6 +88,8 @@ else:
     score_range = None
     st.sidebar.info("No score column found in data.")
 
+
+st.write("Columns:", df.columns.tolist())
 # Critical flag (works with critical_flag or critical_flag_bin)
 critical_col = None
 if "critical_flag_bin" in df.columns:
