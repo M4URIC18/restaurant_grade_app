@@ -1,3 +1,27 @@
+st.markdown(
+    """
+    <style>
+    /* Force readable text in dark mode */
+    .ck-card, .ck-card h3, .ck-card p, .subtext {
+        color: #222222 !important;
+    }
+
+    /* Light background for cards */
+    .ck-card {
+        background-color: #FFFFFF !important;
+    }
+
+    /* Ensure hover stays readable */
+    .ck-card:hover {
+        background-color: #FFFFFF !important;
+    }
+
+    </style>
+    """,
+    unsafe_allow_html=True
+)
+
+
 # pages/1_About.py
 import streamlit as st
 import pandas as pd
