@@ -132,13 +132,6 @@ st.markdown("""
 CleanKitchen NYC helps users explore NYC restaurant inspection data and 
 predict health grades using a machine-learning model.  
 The app combines:
-
-- 🏙️ **NYC Restaurant Inspection Data**  
-- 🧮 **Demographic & socioeconomic features**  
-- 🧠 **ML-based grade prediction**  
-- 🗺️ **Interactive maps & filters**
-
-Everything is shown in a simple and clean layout.
 """)
 
 
