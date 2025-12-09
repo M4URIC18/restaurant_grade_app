@@ -279,8 +279,10 @@ if selected and selected != "-- Select a post --":
 
     st.markdown("</div>", unsafe_allow_html=True)
 
+    # Close button — correctly resets a widget-controlled session_state key
     if st.button("Close Post"):
-        st.session_state.selected_post = None
+        st.session_state["selected_post"] = "-- Select a post --"
         st.rerun()
+
 else:
     st.info("Select a blog post from the dropdown to view details.")
