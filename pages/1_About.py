@@ -128,6 +128,20 @@ st.markdown("---")
 # -------------------------------------------------
 st.markdown("<h2 class='section-title'>✨ What This App Does</h2>", unsafe_allow_html=True)
 
+st.markdown("""
+CleanKitchen NYC helps users explore NYC restaurant inspection data and 
+predict health grades using a machine-learning model.  
+The app combines:
+
+- 🏙️ **NYC Restaurant Inspection Data**  
+- 🧮 **Demographic & socioeconomic features**  
+- 🧠 **ML-based grade prediction**  
+- 🗺️ **Interactive maps & filters**
+
+Everything is shown in a simple and clean layout.
+""")
+
+
 col1, col2, col3 = st.columns(3)
 
 col1, col2, col3 = st.columns(3)
