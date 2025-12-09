@@ -129,12 +129,17 @@ st.markdown("<h2 class='section-title'>✨ What This App Does</h2>", unsafe_allo
 
 col1, col2, col3 = st.columns(3)
 
+col1, col2, col3 = st.columns(3)
+
 with col1:
     st.markdown(
-        f"""
-        <div class='ck-card'>
-            <h3>🗺️ Interactive Map</h3>
-            <p class='subtext'>Explore all NYC restaurants with live search and DOH inspection data.</p>
+        """
+        <div class='ck-card' style='padding:20px; border-radius:12px;
+             box-shadow:0 0 8px rgba(0,0,0,0.08); border-left:4px solid #4F8BF9;'>
+            <h3 style='color:#222;'>🗺️ Interactive Map</h3>
+            <p class='subtext' style='color:#444;'>
+                Search and explore all NYC restaurants using Google Places or DOH records.
+            </p>
         </div>
         """,
         unsafe_allow_html=True
@@ -142,10 +147,13 @@ with col1:
 
 with col2:
     st.markdown(
-        f"""
-        <div class='ck-card'>
-            <h3>🧠 ML Grade Predictions</h3>
-            <p class='subtext'>Predict A/B/C grades using 17+ features from inspections and demographics.</p>
+        """
+        <div class='ck-card' style='padding:20px; border-radius:12px;
+             box-shadow:0 0 8px rgba(0,0,0,0.08); border-left:4px solid #4F8BF9;'>
+            <h3 style='color:#222;'>🧠 ML Grade Predictions</h3>
+            <p class='subtext' style='color:#444;'>
+                Our model uses 17+ features to predict A, B, or C grades.
+            </p>
         </div>
         """,
         unsafe_allow_html=True
@@ -153,16 +161,18 @@ with col2:
 
 with col3:
     st.markdown(
-        f"""
-        <div class='ck-card'>
-            <h3>📊 Filters & Insights</h3>
-            <p class='subtext'>Analyze patterns by borough, cuisine, violations, and score distributions.</p>
+        """
+        <div class='ck-card' style='padding:20px; border-radius:12px;
+             box-shadow:0 0 8px rgba(0,0,0,0.08); border-left:4px solid #4F8BF9;'>
+            <h3 style='color:#222;'>📊 Filter & Insights</h3>
+            <p class='subtext' style='color:#444;'>
+                Analyze patterns across boroughs, cuisines, and violations.
+            </p>
         </div>
         """,
         unsafe_allow_html=True
     )
 
-st.markdown("---")
 
 # -------------------------------------------------
 # HOW IT WORKS — TIMELINE STYLE
